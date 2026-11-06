@@ -69,9 +69,17 @@ header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16
 .card{position:absolute;left:0;top:0;border-radius:var(--r);overflow:hidden;background:#0d0c12;cursor:pointer;
   box-shadow:0 34px 80px rgba(0,0,0,.5);will-change:transform,opacity;backface-visibility:hidden}
 .card .poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;transform-origin:50% 30%;will-change:transform}
-.card:not(.is-center) img.poster{animation:kb 18s ease-in-out infinite alternate}
+.card .still{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;transform-origin:50% 30%;will-change:transform}
+.card:not(.playing) .still{animation:kb 14s ease-in-out infinite alternate}
+.card video.poster{opacity:0;transition:opacity .6s ease}
+.card.playing video.poster{opacity:1}
+/* Safari: не рисовать системную кнопку «плей» с затемнением */
+.card video::-webkit-media-controls,.mini video::-webkit-media-controls,
+.card video::-webkit-media-controls-start-playback-button,.mini video::-webkit-media-controls-start-playback-button,
+.card video::-webkit-media-controls-overlay-play-button,.mini video::-webkit-media-controls-overlay-play-button,
+.card video::-webkit-media-controls-panel,.mini video::-webkit-media-controls-panel{display:none!important;-webkit-appearance:none;opacity:0}
 @keyframes kb{from{transform:scale(1.01)}to{transform:scale(1.12) translate3d(-1.5%,-2.5%,0)}}
-.card .screen{position:absolute;inset:0;overflow:hidden;border-radius:inherit}
+.card .screen{position:absolute;inset:0;overflow:hidden;border-radius:inherit;-webkit-mask-image:-webkit-radial-gradient(white,black);transform:translateZ(0)}
 .card iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;pointer-events:none;background:transparent;opacity:0;transition:opacity .5s}
 .card iframe.ready{opacity:1}
 .card.is-center iframe{pointer-events:auto}
@@ -404,7 +412,7 @@ function sizeCard(c){
   const g = state.g;
   Object.assign(c.style, { width:g.W+'px', height:g.H+'px', left:(g.cx-g.W/2)+'px', top:(g.cy-g.H/2)+'px' });
   if (c._frame) sizeFrame(c._frame);
-  if (c._prev){ const src = previewSrc(c._item); if (c._prev.getAttribute('src') !== src){ c._prev.poster = posterSrc(c._item); c._prev.src = src; } }
+  if (c._prev){ const src = previewSrc(c._item); if (c._prev.getAttribute('src') !== src){ c._still.src = posterSrc(c._item); c.classList.remove('playing'); c._prev.src = src; c._prev.play().catch(() => {}); } }
 }
 function sizeFrame(f){
   const g = state.g;
@@ -412,7 +420,7 @@ function sizeFrame(f){
 }
 /* превью: лёгкие зацикленные видео (portfolio/previews), постер — пока видео грузится */
 const previewSrc = it => it.video ? `previews/${it.preview}.mp4` : `previews/${it.poster}-${(state.g && state.g.mobile) ? 'm' : 'd'}.mp4`;
-const posterSrc = (it, big) => `posters/${it.poster}-${(state.g && state.g.mobile && !big) ? 'm' : 'd'}.webp`;
+const posterSrc = (it, big) => it.video ? `posters/${it.preview}.webp` : `posters/${it.poster}-${(state.g && state.g.mobile && !big) ? 'm' : 'd'}.webp`;
 
 /* =====================================================================
    Карточки
@@ -422,11 +430,15 @@ function makeCard(item, i, cat){
   c.className = 'card';
   const screen = document.createElement('div'); screen.className = 'screen';
   /* в карусели всегда лёгкое видео-превью; живая страница — только в центре, полный ролик — только на весь экран */
+  /* сразу видна картинка-кадр (лёгкий наезд камеры), видео проявляется, когда реально заиграло */
+  const still = document.createElement('img');
+  still.className = 'still'; still.alt = ''; still.decoding = 'async'; still.src = posterSrc(item);
+  screen.appendChild(still); c._still = still;
   const v = document.createElement('video');
   v.className = 'poster';
-  Object.assign(v, { muted:true, loop:true, autoplay:true, playsInline:true, preload:'auto' });
-  v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
-  if (!item.video) v.poster = posterSrc(item);
+  Object.assign(v, { muted:true, loop:true, playsInline:true, preload:'auto' });
+  v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); v.setAttribute('disablepictureinpicture', '');
+  v.addEventListener('playing', () => c.classList.add('playing'));
   v.src = previewSrc(item);
   screen.appendChild(v); c._prev = v;
   if (item.video) c._video = v;
@@ -485,6 +497,42 @@ function unmountFrame(c){
   if (!c._frame) return;
   if (document.activeElement === c._frame) c._frame.blur();
   c._frame.remove(); c._frame = null;
+}
+
+/* Все превью раздела стартуют вместе: ждём, пока догрузятся (максимум 1,6 с), потом запускаем разом */
+function startTogether(cards){
+  const vids = cards.map(c => c._prev).filter(Boolean);
+  let done = false;
+  const go = () => {
+    if (done) return; done = true;
+    vids.forEach(v => { if (!v.isConnected) return; try { v.currentTime = 0; } catch(e){} v.play().catch(() => armKick()); });
+  };
+  let left = vids.length;
+  vids.forEach(v => {
+    if (v.readyState >= 3) { if (--left === 0) go(); return; }
+    v.addEventListener('canplay', () => { if (--left === 0) go(); }, { once:true });
+  });
+  setTimeout(go, 1600);
+}
+/* если браузер не дал автозапуск (режим энергосбережения и т. п.) — запускаем при первом касании */
+let kickArmed = false;
+function kickAll(){ state.cards.forEach(c => { if (c._prev && c._prev.paused && !c._frame && !state.sheet && !state.full) c._prev.play().catch(() => {}); }); }
+function armKick(){
+  if (kickArmed) return; kickArmed = true;
+  const k = () => { kickAll(); ['pointerdown','touchstart','keydown','scroll'].forEach(e => removeEventListener(e, k, true)); kickArmed = false; };
+  ['pointerdown','touchstart','keydown','scroll'].forEach(e => addEventListener(e, k, { capture:true, passive:true }));
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) kickAll(); });
+/* пока смотрят один раздел, тихо подгружаем превью остальных — переключение вкладок будет мгновенным */
+let prefetched = false;
+function prefetchOthers(){
+  if (prefetched || (navigator.connection && navigator.connection.saveData)) return;
+  prefetched = true;
+  const urls = [];
+  for (const [k, cat] of Object.entries(CATS)) if (k !== state.cat) cat.items.forEach(it => { urls.push(posterSrc(it)); urls.push(previewSrc(it)); });
+  let i = 0;
+  const next = () => { if (i >= urls.length) return; fetch(urls[i++]).then(r => r.blob()).catch(() => {}).finally(() => setTimeout(next, 30)); };
+  setTimeout(() => (window.requestIdleCallback || (f => f()))(next), 2500);
 }
 
 function hideScrollbars(f){
@@ -670,6 +718,8 @@ function setCategory(cat, idx = 0, first = false){
   if (first) fillCaption();
   state.g = geom();
   state.cards = CATS[cat].items.map((it, i) => { const c = makeCard(it, i, cat); sizeCard(c); track.appendChild(c); return c; });
+  startTogether(state.cards);
+  prefetchOthers();
   state.cards.forEach((c, i) => {
     const s = relSlot(i); c._slot = s;
     const to = slotStyle(s);
