@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Свет → Электричество · Как работает солнечная электростанция</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<style>
+:root{
+  --sun:#ffb340; --sun2:#ff7a1a; --el:#3cc8ff; --hole:#ff5c8a; --field:#a970ff; --ok:#4cffb0;
+  --txt:#eef2ff; --mut:rgba(220,228,255,.62); --glass:rgba(255,255,255,.055); --glass2:rgba(255,255,255,.09);
+  --line:rgba(255,255,255,.14); --ease:cubic-bezier(.22,1,.36,1); --spring:cubic-bezier(.34,1.56,.64,1);
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100vw;height:100vh;overflow:hidden;background:#03040b;color:var(--txt);font-family:var(--font);-webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none;touch-action:none}
+#bg{position:fixed;inset:0;width:100vw;height:100vh;z-index:0}
+#app{position:fixed;inset:0;z-index:1}
+/* ---------- top bar ---------- */
+.topbar{position:absolute;top:0;left:0;right:0;height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(14px,2.4vw,36px);z-index:20;pointer-events:none}
+.brand{display:flex;align-items:center;gap:12px;font-weight:600;letter-spacing:.2px;font-size:15px;pointer-events:auto}
+.brand .logo{width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff6d0,var(--sun) 40%,var(--sun2) 75%);box-shadow:0 0 22px rgba(255,170,60,.75),0 0 60px rgba(255,140,40,.35);animation:pulse 4s ease-in-out infinite}
+.brand small{color:var(--mut);font-weight:500}
+@keyframes pulse{50%{box-shadow:0 0 30px rgba(255,170,60,.95),0 0 90px rgba(255,140,40,.45)}}
+.tools{display:flex;gap:8px;pointer-events:auto}
+.icon-btn{height:38px;min-width:38px;padding:0 12px;border-radius:19px;border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);color:var(--txt);display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;font:500 13px var(--font);transition:transform .35s var(--spring),background .3s,border-color .3s,box-shadow .3s}
+.icon-btn:hover{background:var(--glass2);transform:translateY(-1px) scale(1.04);border-color:rgba(255,255,255,.28)}
+.icon-btn:active{transform:scale(.94)}
+.icon-btn.on{border-color:rgba(255,179,64,.65);box-shadow:0 0 18px rgba(255,179,64,.35);background:rgba(255,179,64,.14)}
+.icon-btn svg{width:17px;height:17px}
+.icon-btn .lbl{display:inline}
+/* ---------- stage ---------- */
+#stage{position:absolute;inset:0;perspective:1600px}
+.scene{position:absolute;inset:0;padding:74px clamp(14px,2.4vw,36px) 92px;opacity:0;visibility:hidden;pointer-events:none;transform:translate3d(0,0,0);transition:opacity .9s var(--ease),transform 1.1s var(--ease),filter .9s var(--ease),visibility 0s linear 1.1s}
+.scene.active{opacity:1;visibility:visible;pointer-events:auto;transform:none;filter:none;transition:opacity .9s var(--ease) .12s,transform 1.1s var(--ease) .05s,filter .9s var(--ease) .12s,visibility 0s}
+.scene.from-right{transform:translate3d(9%,0,-260px) rotateY(-9deg);filter:blur(14px)}
+.scene.from-left{transform:translate3d(-9%,0,-260px) rotateY(9deg);filter:blur(14px)}
+.scene.to-left{transform:translate3d(-7%,0,-320px) rotateY(8deg) scale(.96);filter:blur(16px);opacity:0}
+.scene.to-right{transform:translate3d(7%,0,-320px) rotateY(-8deg) scale(.96);filter:blur(16px);opacity:0}
+.grid{width:100%;height:100%;display:grid;grid-template-columns:minmax(300px,31%) 1fr;gap:clamp(12px,1.6vw,24px)}
+.grid.wide{grid-template-columns:minmax(300px,27%) 1fr}
+.glass{background:linear-gradient(160deg,rgba(255,255,255,.085),rgba(255,255,255,.03));border:1px solid var(--line);border-radius:26px;backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);box-shadow:0 24px 70px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.12)}
+.info{padding:clamp(16px,2vw,30px);display:flex;flex-direction:column;gap:14px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent;touch-action:pan-y}
+.info::-webkit-scrollbar{width:5px}.info::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:3px}
+.kicker{font-size:12px;letter-spacing:2.2px;text-transform:uppercase;color:var(--sun);font-weight:600;display:flex;align-items:center;gap:10px}
+.kicker:before{content:"";width:22px;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--sun),transparent)}
+.info h1{font-size:clamp(24px,2.6vw,42px);line-height:1.06;font-weight:700;letter-spacing:-.8px}
+.info h1 .g{background:linear-gradient(92deg,#fff3c4,var(--sun) 45%,var(--sun2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.info h1 .b{background:linear-gradient(92deg,#d7f5ff,var(--el));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{font-size:clamp(13.5px,1.05vw,16.5px);line-height:1.5;color:var(--mut)}
+.lead b,.pts b{color:var(--txt);font-weight:600}
+.pts{list-style:none;display:flex;flex-direction:column;gap:8px;font-size:clamp(12.5px,.95vw,14.5px);line-height:1.45;color:rgba(230,236,255,.82)}
+.pts li{position:relative;padding-left:20px}
+.pts li:before{content:"";position:absolute;left:3px;top:.55em;width:7px;height:7px;border-radius:50%;background:var(--sun);box-shadow:0 0 10px var(--sun)}
+.pts li.e:before{background:var(--el);box-shadow:0 0 10px var(--el)}
+.pts li.h:before{background:var(--hole);box-shadow:0 0 10px var(--hole)}
+.pts li.f:before{background:var(--field);box-shadow:0 0 10px var(--field)}
+.e-t{color:var(--el)}.h-t{color:var(--hole)}.f-t{color:var(--field)}.s-t{color:var(--sun)}
+.controls{display:flex;flex-direction:column;gap:12px;margin-top:4px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.visual{position:relative;border-radius:28px;overflow:hidden;min-height:0;min-width:0;border:1px solid rgba(255,255,255,.08);background:radial-gradient(120% 90% at 50% 0%,rgba(80,90,170,.16),rgba(5,7,20,.35) 60%);box-shadow:inset 0 0 120px rgba(0,0,0,.45)}
+.visual canvas{position:absolute;inset:0;display:block}
+.visual.drag{cursor:grab}.visual.drag:active{cursor:grabbing}
+.cap{position:absolute;left:18px;bottom:16px;max-width:calc(100% - 36px);padding:9px 14px;border-radius:14px;font-size:12.5px;color:rgba(235,240,255,.88);background:rgba(10,12,30,.55);border:1px solid var(--line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);pointer-events:none;z-index:3}
+.cap b{color:var(--sun)}
+.hud{position:absolute;z-index:4;display:flex;gap:10px;flex-wrap:wrap;pointer-events:none}
+.hud.tl{top:16px;left:16px}.hud.tr{top:16px;right:16px;justify-content:flex-end}.hud.br{right:16px;bottom:16px}.hud.bl{left:16px;bottom:16px}
+.stat{padding:10px 15px;border-radius:16px;background:rgba(12,14,34,.55);border:1px solid var(--line);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);min-width:96px}
+.stat .k{font-size:10.5px;letter-spacing:1.3px;text-transform:uppercase;color:var(--mut)}
+.stat .v{font-size:clamp(17px,1.6vw,26px);font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums;margin-top:2px}
+.stat .v small{font-size:.55em;font-weight:600;color:var(--mut);margin-left:3px}
+.stat.sun .v{color:var(--sun)}.stat.el .v{color:var(--el)}.stat.ho .v{color:var(--hole)}.stat.fi .v{color:var(--field)}.stat.ok .v{color:var(--ok)}
+.chip{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.05);font-size:12.5px;color:var(--txt);transition:transform .35s var(--spring),border-color .3s,background .3s,box-shadow .3s;cursor:default;position:relative}
+.chip:hover{transform:translateY(-2px) scale(1.05);border-color:rgba(255,179,64,.6);background:rgba(255,179,64,.1);box-shadow:0 6px 24px rgba(255,179,64,.2)}
+.chip i{font-style:normal;color:var(--mut);font-size:11px}
+.formula{font:600 clamp(13px,1vw,15.5px) ui-monospace,"SF Mono",Menlo,Consolas,monospace;padding:12px 14px;border-radius:14px;background:rgba(169,112,255,.09);border:1px solid rgba(169,112,255,.3);color:#e9ddff;letter-spacing:.2px;line-height:1.5}
+.formula .s-t{color:var(--sun)}
+.callout{padding:12px 14px;border-radius:16px;font-size:13px;line-height:1.45;background:linear-gradient(120deg,rgba(255,179,64,.13),rgba(255,92,138,.08));border:1px solid rgba(255,179,64,.33)}
+.callout.blue{background:linear-gradient(120deg,rgba(60,200,255,.12),rgba(169,112,255,.08));border-color:rgba(60,200,255,.33)}
+.tag{font-size:clamp(28px,4.4vw,72px);font-weight:800;letter-spacing:-1.5px;line-height:1}
+/* ---------- custom controls ---------- */
+.ctl{display:flex;flex-direction:column;gap:7px}
+.ctl-h{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--mut)}
+.ctl-h .val{color:var(--txt);font-weight:600;font-variant-numeric:tabular-nums;transition:color .3s}
+.slider{position:relative;height:30px;cursor:pointer;touch-action:none}
+.slider .tr{position:absolute;left:0;right:0;top:50%;height:7px;margin-top:-3.5px;border-radius:7px;background:rgba(255,255,255,.1);box-shadow:inset 0 1px 2px rgba(0,0,0,.5);overflow:hidden}
+.slider .fi{position:absolute;left:0;top:0;bottom:0;border-radius:7px;background:linear-gradient(90deg,var(--c1,#ff9a2e),var(--c2,#ffd36b));box-shadow:0 0 14px var(--c2,#ffd36b)}
+.slider .th{position:absolute;top:50%;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#e8ecff 60%,#c9d0ea);box-shadow:0 3px 10px rgba(0,0,0,.5),0 0 0 0 rgba(255,200,100,0);transition:transform .35s var(--spring),box-shadow .3s}
+.slider:hover .th{transform:scale(1.1);box-shadow:0 3px 10px rgba(0,0,0,.5),0 0 0 6px rgba(255,255,255,.08)}
+.slider.act .th{transform:scale(1.28);box-shadow:0 3px 14px rgba(0,0,0,.5),0 0 0 9px rgba(255,200,110,.16),0 0 22px var(--c2,#ffd36b)}
+.sw{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;font-size:13.5px;padding:3px 0}
+.sw .knob{flex:none;position:relative;width:52px;height:31px;border-radius:16px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.12);transition:background .35s var(--ease),box-shadow .35s}
+.sw .knob:after{content:"";position:absolute;top:2px;left:2px;width:25px;height:25px;border-radius:50%;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.4);transition:transform .45s var(--spring),width .25s}
+.sw:active .knob:after{width:31px}
+.sw.on .knob{background:linear-gradient(90deg,#ff9a2e,#ffc94d);box-shadow:0 0 18px rgba(255,170,60,.55)}
+.sw.on .knob:after{transform:translateX(21px)}
+.sw.on:active .knob:after{transform:translateX(15px)}
+.sw.blue.on .knob{background:linear-gradient(90deg,#2a8cff,#3cc8ff);box-shadow:0 0 18px rgba(60,200,255,.55)}
+.seg{position:relative;display:flex;padding:4px;border-radius:15px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1)}
+.seg .pill{position:absolute;top:4px;bottom:4px;border-radius:11px;background:linear-gradient(180deg,rgba(255,255,255,.26),rgba(255,255,255,.14));box-shadow:0 4px 14px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.3);transition:left .5s var(--spring),width .5s var(--spring)}
+.seg button{position:relative;flex:1;z-index:1;border:0;background:none;color:var(--mut);font:600 12.5px var(--font);padding:9px 8px;cursor:pointer;border-radius:11px;transition:color .3s;white-space:nowrap}
+.seg button.sel{color:#fff}
+.btn{position:relative;border:1px solid rgba(255,255,255,.18);background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.05));color:var(--txt);font:600 13.5px var(--font);padding:11px 18px;border-radius:14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:transform .4s var(--spring),box-shadow .3s,border-color .3s,background .3s;overflow:hidden}
+.btn:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.1);border-color:rgba(255,255,255,.3)}
+.btn:active{transform:scale(.95)}
+.btn.pri{background:linear-gradient(180deg,#ffbe55,#ff8a24);border-color:rgba(255,220,150,.6);color:#2a1300;box-shadow:0 8px 28px rgba(255,140,40,.35)}
+.btn.blu{background:linear-gradient(180deg,#5fd6ff,#2a8cff);border-color:rgba(160,230,255,.6);color:#001a33;box-shadow:0 8px 28px rgba(60,170,255,.35)}
+.btn.pnk{background:linear-gradient(180deg,#ff86a8,#ff4d7d);border-color:rgba(255,190,210,.6);color:#33000f;box-shadow:0 8px 28px rgba(255,80,130,.3)}
+.btn .rip{position:absolute;border-radius:50%;background:rgba(255,255,255,.5);transform:scale(0);animation:rip .6s ease-out forwards;pointer-events:none}
+@keyframes rip{to{transform:scale(4);opacity:0}}
+/* ---------- reveal ---------- */
+.rv{opacity:0;transform:translateY(18px);transition:opacity .8s var(--ease),transform .9s var(--ease)}
+.scene.active .rv{opacity:1;transform:none}
+.scene.active .rv:nth-child(1){transition-delay:.25s}.scene.active .rv:nth-child(2){transition-delay:.33s}.scene.active .rv:nth-child(3){transition-delay:.41s}.scene.active .rv:nth-child(4){transition-delay:.49s}.scene.active .rv:nth-child(5){transition-delay:.57s}.scene.active .rv:nth-child(6){transition-delay:.65s}.scene.active .rv:nth-child(7){transition-delay:.73s}.scene.active .rv:nth-child(8){transition-delay:.81s}.scene.active .rv:nth-child(n+9){transition-delay:.89s}
+/* ---------- timeline ---------- */
+#nav{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:24px;max-width:calc(100vw - 24px)}
+#nav .arrow{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.05);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .35s var(--spring),background .3s;flex:none}
+#nav .arrow:hover{background:rgba(255,255,255,.14);transform:scale(1.08)}#nav .arrow:active{transform:scale(.9)}
+#dots{display:flex;align-items:center;gap:4px;position:relative}
+.dot{position:relative;height:38px;min-width:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:12px;padding:0 6px;transition:background .3s}
+.dot span{display:block;width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3);transition:all .5s var(--spring)}
+.dot:hover span{background:rgba(255,255,255,.7);transform:scale(1.3)}
+.dot.done span{background:rgba(255,179,64,.55)}
+.dot.cur span{width:26px;border-radius:5px;background:linear-gradient(90deg,var(--sun),#ffe08a);box-shadow:0 0 14px var(--sun)}
+.dot em{position:absolute;bottom:46px;left:50%;transform:translate(-50%,6px);white-space:nowrap;font-style:normal;font-size:12px;padding:6px 10px;border-radius:10px;background:rgba(14,16,36,.85);border:1px solid var(--line);opacity:0;pointer-events:none;transition:all .3s var(--ease)}
+.dot:hover em{opacity:1;transform:translate(-50%,0)}
+#counter{font:600 13px var(--font);font-variant-numeric:tabular-nums;color:var(--mut);padding:0 8px;white-space:nowrap}
+#counter b{color:#fff}
+#secname{font-size:12.5px;color:var(--txt);padding-right:6px;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis}
+#progress{position:absolute;left:0;top:0;height:2px;background:linear-gradient(90deg,var(--sun),var(--el));box-shadow:0 0 10px var(--sun);z-index:30;transition:width .9s var(--ease)}
+/* ---------- notes ---------- */
+#notes{position:absolute;right:clamp(10px,2vw,28px);top:72px;bottom:90px;width:min(440px,calc(100vw - 20px));z-index:25;padding:22px 24px;display:flex;flex-direction:column;gap:12px;transform:translateX(calc(100% + 40px));opacity:0;transition:transform .7s var(--spring),opacity .4s}
+#notes.open{transform:none;opacity:1}
+#notes h3{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--sun);display:flex;justify-content:space-between;align-items:center}
+#notes .txt{overflow-y:auto;font-size:15.5px;line-height:1.62;color:#f2f4ff;padding-right:6px;touch-action:pan-y}
+#notes .txt p{margin-bottom:.8em}
+#notes .fix{font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:10px;line-height:1.5}
+#toast{position:absolute;left:50%;top:76px;transform:translate(-50%,-20px);z-index:40;padding:10px 18px;border-radius:14px;font-size:13px;opacity:0;transition:all .5s var(--spring);pointer-events:none}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#hint{position:absolute;right:20px;bottom:24px;font-size:11.5px;color:rgba(220,228,255,.4);z-index:19;pointer-events:none}
+.tip{position:absolute;z-index:6;pointer-events:none;padding:9px 13px;border-radius:12px;background:rgba(12,14,34,.82);border:1px solid rgba(255,179,64,.45);font-size:12.5px;line-height:1.4;opacity:0;transform:translateY(6px);transition:opacity .25s,transform .25s;max-width:240px}
+.tip.show{opacity:1;transform:none}
+.chain{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chain .st{padding:8px 12px;border-radius:12px;font-size:12px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--mut);transition:all .5s var(--spring)}
+.chain .st.lit{color:#1f1200;background:linear-gradient(180deg,#ffd27a,#ff9a2e);border-color:#ffd27a;box-shadow:0 0 22px rgba(255,170,60,.6);transform:translateY(-2px) scale(1.06)}
+.chain .st.past{color:var(--txt);border-color:rgba(255,179,64,.5);background:rgba(255,179,64,.1)}
+.chain .ar{color:rgba(255,255,255,.3);font-size:12px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mut)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+#stage .mini{gap:6px}.mini .stat{min-width:0;flex:1;padding:7px 9px;border-radius:12px}.mini .stat .v{font-size:16px}.mini .stat .k{font-size:9.5px;letter-spacing:.6px}
+.homes{display:flex;flex-wrap:wrap;gap:3px;max-width:230px;margin-top:6px}
+.homes svg{width:15px;height:15px;transition:all .4s}
+/* ---------- responsive ---------- */
+@media (max-aspect-ratio:4/3){.grid,.grid.wide{grid-template-columns:minmax(270px,36%) 1fr}#secname{display:none}}
+@media (max-width:860px),(max-aspect-ratio:1/1){
+  .scene{padding:62px 10px 78px}
+  .grid,.grid.wide{grid-template-columns:1fr;grid-template-rows:minmax(0,46%) minmax(0,54%);gap:10px}
+  .visual{order:-1;border-radius:20px}
+  .info{border-radius:20px;padding:16px}
+  .info h1{font-size:24px}
+  .topbar{height:56px}.brand small,.icon-btn .lbl,#hint,#secname{display:none}
+  #nav{bottom:8px;padding:6px}.dot{min-width:16px;padding:0 3px}.dot span{width:6px;height:6px}.dot.cur span{width:16px}
+  #notes{top:60px;bottom:74px}
+  .stat{padding:6px 9px;min-width:60px}.stat .v{font-size:15px}.stat .k{font-size:9px;letter-spacing:.5px}.chartbox{height:96px!important;width:55%!important}.homes{display:none}.hud{gap:5px}.hud.tl,.hud.tr{top:8px}.hud.tr{right:8px;left:8px}.cap{font-size:11px;left:10px;bottom:10px}
+}
+@media (max-height:620px){.scene{padding-top:60px;padding-bottom:72px}.info{gap:9px}.info h1{font-size:24px}}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div id="app">
+  <div id="progress"></div>
+  <header class="topbar">
+    <div class="brand"><div class="logo"></div><div>Свет → Электричество <small>· физика СЭС</small></div></div>
+    <div class="tools">
+      <button class="icon-btn" id="bSpeak" title="Озвучить заметки (ru-RU)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/></svg><span class="lbl">Озвучить</span></button>
+      <button class="icon-btn" id="bMute" title="Звук (M)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path class="w" d="M16 9l5 6M21 9l-5 6"/></svg><span class="lbl">Звук</span></button>
+      <button class="icon-btn" id="bNotes" title="Заметки докладчика (N)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg><span class="lbl">Заметки</span></button>
+      <button class="icon-btn" id="bFull" title="Полный экран (F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    </div>
+  </header>
+  <main id="stage"></main>
+  <nav id="nav" class="glass">
+    <button class="arrow" id="prev" aria-label="Назад"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div id="dots"></div>
+    <div id="counter"><b>1</b> / 13</div>
+    <div id="secname"></div>
+    <button class="arrow" id="next" aria-label="Вперёд"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></button>
+  </nav>
+  <aside id="notes" class="glass"><h3><span>Заметки докладчика</span><span id="notesN" style="color:var(--mut)"></span></h3><div class="txt" id="notesTxt"></div><div class="fix" id="notesFix"></div></aside>
+  <div id="toast" class="glass"></div>
+  <div id="hint">← → / пробел · N — заметки · F — полный экран · M — звук</div>
+</div>
+<script>
+"use strict";
+/* =====================================================================
+   ЯДРО: утилиты, UI-контролы, звук, фон, навигация
+   ===================================================================== */
+const $ = (s, r = document) => r.querySelector(s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rnd = (a = 0, b = 1) => a + Math.random() * (b - a);
+const ease = t => 1 - Math.pow(1 - t, 3);
+const easeIO = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const TAU = Math.PI * 2;
+const C = { sun: '#ffb340', sun2: '#ff7a1a', el: '#3cc8ff', hole: '#ff5c8a', field: '#a970ff', ok: '#4cffb0', txt: '#eef2ff' };
+const fmt = (v, d = 0) => v.toLocaleString('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d });
+function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`; }
+function sup(n) { const m = { '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' }; return String(n).split('').map(c => m[c] || c).join(''); }
+function sci(v, d = 1) { if (v <= 0) return '0'; const e = Math.floor(Math.log10(v)); const m = v / Math.pow(10, e); return fmt(m, d) + '·10' + sup(e); }
+let HAS3D = false;
+try { if (window.THREE) { const t = document.createElement('canvas'); HAS3D = !!(t.getContext('webgl2') || t.getContext('webgl')); } } catch (e) { HAS3D = false; }
+
+/* ---------- Анимированный счётчик ---------- */
+const COUNTERS = [];
+function Counter(node, f = v => fmt(v), speed = 7) {
+  const o = { node, f, cur: 0, tgt: 0, speed, set(v, instant) { o.tgt = v; if (instant) { o.cur = v; o.node.innerHTML = o.f(v); } } };
+  COUNTERS.push(o); return o;
+}
+function tickCounters(dt) {
+  for (const c of COUNTERS) {
+    if (c.cur === c.tgt) continue;
+    const d = c.tgt - c.cur; c.cur += d * Math.min(1, dt * c.speed);
+    if (Math.abs(d) < Math.max(1e-6, Math.abs(c.tgt) * 1e-4)) c.cur = c.tgt;
+    c.node.innerHTML = c.f(c.cur);
+  }
+}
+function stat(parent, k, cls, unit = '') {
+  const s = el('div', 'stat ' + (cls || ''), `<div class="k">${k}</div><div class="v"><span>0</span>${unit ? `<small>${unit}</small>` : ''}</div>`);
+  parent.appendChild(s); return s.querySelector('.v span');
+}
+
+/* ---------- Звук: Web Audio ---------- */
+const Snd = {
+  ctx: null, on: false, master: null, amb: null, humG: null, lastClick: 0,
+  init() {
+    if (this.ctx) return;
+    const A = window.AudioContext || window.webkitAudioContext; if (!A) return;
+    const ctx = this.ctx = new A();
+    this.master = ctx.createGain(); this.master.gain.value = 0; this.master.connect(ctx.destination);
+    // эмбиент: мягкий аккорд с медленной модуляцией фильтра
+    const ambG = ctx.createGain(); ambG.gain.value = .07;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700; lp.Q.value = 2;
+    const lfo = ctx.createOscillator(); lfo.frequency.value = .05; const lfoG = ctx.createGain(); lfoG.gain.value = 380; lfo.connect(lfoG); lfoG.connect(lp.frequency); lfo.start();
+    [55, 82.41, 110, 164.81, 207.65, 329.63].forEach((f, i) => {
+      const o = ctx.createOscillator(); o.type = i % 2 ? 'sine' : 'triangle'; o.frequency.value = f; o.detune.value = rnd(-8, 8);
+      const g = ctx.createGain(); g.gain.value = [.5, .35, .3, .2, .12, .07][i];
+      const tl = ctx.createOscillator(); tl.frequency.value = rnd(.04, .14); const tg = ctx.createGain(); tg.gain.value = g.gain.value * .6; tl.connect(tg); tg.connect(g.gain); tl.start();
+      o.connect(g); g.connect(lp); o.start();
+    });
+    // «шум космоса»
+    const nb = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate), d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const ns = ctx.createBufferSource(); ns.buffer = nb; ns.loop = true; const nf = ctx.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 400; nf.Q.value = .6; const ng = ctx.createGain(); ng.gain.value = .025; ns.connect(nf); nf.connect(ng); ng.connect(lp); ns.start();
+    lp.connect(ambG); ambG.connect(this.master); this.amb = ambG;
+    // гул тока
+    this.humG = ctx.createGain(); this.humG.gain.value = 0;
+    const hf = ctx.createBiquadFilter(); hf.type = 'lowpass'; hf.frequency.value = 420;
+    [100, 200, 300].forEach((f, i) => { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; const g = ctx.createGain(); g.gain.value = [.5, .22, .1][i]; o.connect(g); g.connect(hf); o.start(); });
+    hf.connect(this.humG); this.humG.connect(this.master);
+  },
+  toggle() {
+    this.init(); if (!this.ctx) return;
+    this.on = !this.on; if (this.ctx.state === 'suspended') this.ctx.resume();
+    const t = this.ctx.currentTime; this.master.gain.cancelScheduledValues(t); this.master.gain.setTargetAtTime(this.on ? .9 : 0, t, .4);
+    $('#bMute').classList.toggle('on', this.on); $('#bMute .w').style.display = this.on ? 'none' : '';
+    $('#bMute .w').setAttribute('d', this.on ? '' : 'M16 9l5 6M21 9l-5 6');
+    toast(this.on ? '🔊 Звук включён' : '🔇 Звук выключен');
+  },
+  env(type, f0, f1, dur, vol) {
+    if (!this.on || !this.ctx) return; const c = this.ctx, t = c.currentTime;
+    const o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .005); g.gain.exponentialRampToValueAtTime(.0001, t + dur); o.connect(g); g.connect(this.master); o.start(t); o.stop(t + dur + .05);
+  },
+  click() { const n = performance.now(); if (n - this.lastClick < 45) return; this.lastClick = n; this.env('sine', 1800, 700, .045, .07); },
+  tap() { this.env('triangle', 900, 420, .09, .09); },
+  ding(p = 1) { [1320, 1980, 2640].forEach((f, i) => this.env('sine', f * p, f * p * .998, .9 - i * .2, .06 / (i + 1))); },
+  thud() { this.env('sine', 160, 50, .35, .12); },
+  whoosh() { if (!this.on || !this.ctx) return; const c = this.ctx, t = c.currentTime; const b = c.createBuffer(1, c.sampleRate * .7, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * i / d.length); const s = c.createBufferSource(); s.buffer = b; const f = c.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.2; f.frequency.setValueAtTime(300, t); f.frequency.exponentialRampToValueAtTime(2400, t + .6); const g = c.createGain(); g.gain.value = .06; s.connect(f); f.connect(g); g.connect(this.master); s.start(t); },
+  hum(level) { if (!this.ctx) return; this.humG.gain.setTargetAtTime(this.on ? level * .05 : 0, this.ctx.currentTime, .25); }
+};
+
+/* ---------- Озвучка заметок ---------- */
+const Speech = {
+  on: false,
+  toggle() { if (!('speechSynthesis' in window)) { toast('Озвучка не поддерживается браузером'); return; } this.on = !this.on; $('#bSpeak').classList.toggle('on', this.on); if (this.on) this.say(); else speechSynthesis.cancel(); },
+  say() {
+    if (!this.on) return; speechSynthesis.cancel();
+    const txt = SCENES[cur].notes.replace(/<[^>]+>/g, ' ');
+    const u = new SpeechSynthesisUtterance(txt); u.lang = 'ru-RU'; u.rate = 1;
+    const v = speechSynthesis.getVoices().find(v => /ru/i.test(v.lang)); if (v) u.voice = v;
+    u.onend = () => { }; speechSynthesis.speak(u);
+  }
+};
+
+/* ---------- Тост ---------- */
+let toastT = 0;
+function toast(t) { const e = $('#toast'); e.textContent = t; e.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove('show'), 1600); }
+
+/* ---------- UI-фабрика (собственные контролы) ---------- */
+const UI = {
+  slider(parent, o) {
+    const w = el('div', 'ctl'); w.dataset.noswipe = 1;
+    w.innerHTML = `<div class="ctl-h"><span>${o.label}</span><span class="val"></span></div><div class="slider"><div class="tr"><div class="fi"></div></div><div class="th"></div></div>`;
+    parent.appendChild(w);
+    const s = w.querySelector('.slider'), fi = w.querySelector('.fi'), th = w.querySelector('.th'), val = w.querySelector('.val');
+    if (o.c1) s.style.setProperty('--c1', o.c1); if (o.c2) s.style.setProperty('--c2', o.c2);
+    const st = o.step || 1; let v = o.value, last = v;
+    const fm = o.fmt || (x => fmt(x, st < 1 ? (st < .1 ? 2 : 1) : 0) + (o.unit || ''));
+    const pos = () => { const p = (v - o.min) / (o.max - o.min) * 100; fi.style.width = p + '%'; th.style.left = p + '%'; val.innerHTML = fm(v); };
+    const fromX = x => { const r = s.getBoundingClientRect(); let t = clamp((x - r.left) / r.width, 0, 1); let nv = o.min + t * (o.max - o.min); nv = Math.round(nv / st) * st; nv = clamp(+nv.toFixed(6), o.min, o.max); if (nv !== v) { v = nv; pos(); if (Math.abs(v - last) >= st) { Snd.click(); last = v; } o.onChange && o.onChange(v); } };
+    s.addEventListener('pointerdown', e => { s.setPointerCapture(e.pointerId); s.classList.add('act'); fromX(e.clientX); e.stopPropagation(); });
+    s.addEventListener('pointermove', e => { if (s.classList.contains('act')) fromX(e.clientX); });
+    const up = () => s.classList.remove('act'); s.addEventListener('pointerup', up); s.addEventListener('pointercancel', up);
+    pos();
+    return { get: () => v, set(nv, silent) { v = clamp(nv, o.min, o.max); pos(); if (!silent) o.onChange && o.onChange(v); }, el: w };
+  },
+  toggle(parent, o) {
+    const w = el('div', 'sw' + (o.blue ? ' blue' : ''), `<span>${o.label}</span><div class="knob"></div>`); w.dataset.noswipe = 1; parent.appendChild(w);
+    let v = !!o.value; const set = (nv, silent) => { v = nv; w.classList.toggle('on', v); if (!silent) o.onChange && o.onChange(v); };
+    w.addEventListener('click', () => { Snd.tap(); set(!v); }); set(v, true);
+    return { get: () => v, set, el: w };
+  },
+  seg(parent, o) {
+    const w = el('div', 'ctl'); if (o.label) w.innerHTML = `<div class="ctl-h"><span>${o.label}</span></div>`;
+    const sg = el('div', 'seg'); sg.dataset.noswipe = 1; const pill = el('div', 'pill'); sg.appendChild(pill); w.appendChild(sg); parent.appendChild(w);
+    const btns = o.options.map(op => { const b = el('button', '', op.t); b.onclick = () => { Snd.tap(); set(op.v); }; sg.appendChild(b); return b; });
+    let v = o.value;
+    const place = () => { const i = o.options.findIndex(op => op.v === v); const b = btns[i]; if (!b) return; pill.style.left = b.offsetLeft + 'px'; pill.style.width = b.offsetWidth + 'px'; btns.forEach((x, j) => x.classList.toggle('sel', j === i)); };
+    const set = (nv, silent) => { v = nv; place(); if (!silent) o.onChange && o.onChange(v); };
+    requestAnimationFrame(place); window.addEventListener('resize', place); w._place = place; SEGS.push(place);
+    return { get: () => v, set, el: w };
+  },
+  button(parent, o) {
+    const b = el('button', 'btn ' + (o.kind || ''), o.text); b.dataset.noswipe = 1; parent.appendChild(b);
+    b.addEventListener('click', e => { const r = b.getBoundingClientRect(), s = Math.max(r.width, r.height); const rp = el('span', 'rip'); rp.style.cssText = `width:${s}px;height:${s}px;left:${e.clientX - r.left - s / 2}px;top:${e.clientY - r.top - s / 2}px`; b.appendChild(rp); setTimeout(() => rp.remove(), 650); Snd.tap(); o.onClick && o.onClick(e); });
+    return b;
+  }
+};
+const SEGS = [];
+
+/* ---------- Canvas 2D помощник ---------- */
+function Cv(container) {
+  const c = document.createElement('canvas'); container.appendChild(c); const ctx = c.getContext('2d');
+  const o = {
+    c, ctx, w: 1, h: 1, dpr: 1,
+    resize() { const r = container.getBoundingClientRect(); if (!r.width) return; o.dpr = Math.min(2, window.devicePixelRatio || 1); o.w = r.width; o.h = r.height; c.width = Math.round(r.width * o.dpr); c.height = Math.round(r.height * o.dpr); c.style.width = r.width + 'px'; c.style.height = r.height + 'px'; ctx.setTransform(o.dpr, 0, 0, o.dpr, 0, 0); },
+    clear() { ctx.clearRect(0, 0, o.w, o.h); }
+  };
+  RESIZERS.push(() => o.resize()); return o;
+}
+const RESIZERS = [];
+function glow(ctx, x, y, r, col, a = 1) { const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, hexA(col, a)); g.addColorStop(1, hexA(col, 0)); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); }
+function electron(ctx, x, y, r = 6, a = 1, sign = true) { ctx.globalAlpha = a; glow(ctx, x, y, r * 3, C.el, .45); ctx.fillStyle = '#bfefff'; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); ctx.fillStyle = C.el; ctx.beginPath(); ctx.arc(x, y, r * .78, 0, TAU); ctx.fill(); if (sign && r > 4.5) { ctx.strokeStyle = '#04263a'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x - r * .45, y); ctx.lineTo(x + r * .45, y); ctx.stroke(); } ctx.globalAlpha = 1; }
+function hole(ctx, x, y, r = 6, a = 1, sign = true) { ctx.globalAlpha = a; glow(ctx, x, y, r * 3, C.hole, .4); ctx.strokeStyle = C.hole; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.stroke(); ctx.fillStyle = hexA(C.hole, .18); ctx.fill(); if (sign && r > 4.5) { ctx.strokeStyle = '#ffd0dc'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x - r * .45, y); ctx.lineTo(x + r * .45, y); ctx.moveTo(x, y - r * .45); ctx.lineTo(x, y + r * .45); ctx.stroke(); } ctx.globalAlpha = 1; }
+function photonWave(ctx, x0, y0, x1, y1, col, lam = 14, amp = 6, w = 2.2, a = 1) {
+  const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy); if (L < 1) return; const ux = dx / L, uy = dy / L, nx = -uy, ny = ux;
+  ctx.save(); ctx.globalAlpha = a; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.shadowColor = col; ctx.shadowBlur = 12; ctx.beginPath();
+  for (let s = 0; s <= L; s += 2) { const env = Math.sin(Math.PI * s / L); const o = Math.sin(s / lam * TAU) * amp * env; const x = x0 + ux * s + nx * o, y = y0 + uy * s + ny * o; s ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+  ctx.stroke(); ctx.restore();
+}
+function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function arrow(ctx, x0, y0, x1, y1, col, w = 2, hs = 9) { const a = Math.atan2(y1 - y0, x1 - x0); ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - Math.cos(a) * hs * .6, y1 - Math.sin(a) * hs * .6); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - Math.cos(a - .45) * hs, y1 - Math.sin(a - .45) * hs); ctx.lineTo(x1 - Math.cos(a + .45) * hs, y1 - Math.sin(a + .45) * hs); ctx.closePath(); ctx.fill(); }
+function txt(ctx, s, x, y, o = {}) { ctx.font = `${o.w || 600} ${o.s || 13}px ${getComputedStyle(document.body).fontFamily}`; ctx.fillStyle = o.c || C.txt; ctx.textAlign = o.a || 'left'; ctx.textBaseline = o.b || 'middle'; ctx.globalAlpha = o.alpha == null ? 1 : o.alpha; ctx.fillText(s, x, y); ctx.globalAlpha = 1; }
+function wl2rgb(l) { // длина волны (нм) → цвет
+  let r = 0, g = 0, b = 0;
+  if (l < 380) return '#9b6bff'; if (l > 780) return l > 1100 ? '#7a2b2b' : '#b02020';
+  if (l < 440) { r = -(l - 440) / 60; b = 1; } else if (l < 490) { g = (l - 440) / 50; b = 1; } else if (l < 510) { g = 1; b = -(l - 510) / 20; } else if (l < 580) { r = (l - 510) / 70; g = 1; } else if (l < 645) { r = 1; g = -(l - 645) / 65; } else r = 1;
+  let f = l < 420 ? .3 + .7 * (l - 380) / 40 : l > 700 ? .3 + .7 * (780 - l) / 80 : 1;
+  const h = v => Math.round(255 * Math.pow(v * f, .8)).toString(16).padStart(2, '0'); return '#' + h(r) + h(g) + h(b);
+}
+
+/* ---------- Фон: звёзды, туманности, параллакс ---------- */
+const BG = {
+  init() {
+    this.c = $('#bg'); this.ctx = this.c.getContext('2d'); this.px = 0; this.tpx = 0; this.my = 0; this.mx = 0;
+    this.resize(); window.addEventListener('resize', () => this.resize());
+    this.stars = Array.from({ length: 260 }, () => ({ x: Math.random(), y: Math.random(), z: rnd(.2, 1), r: rnd(.3, 1.4), tw: rnd(0, TAU) }));
+    this.dust = Array.from({ length: 50 }, () => ({ x: Math.random(), y: Math.random(), vx: rnd(-.004, .004), vy: rnd(-.006, -.001), r: rnd(1, 2.4), c: Math.random() < .5 ? C.sun : (Math.random() < .5 ? C.el : C.field) }));
+    window.addEventListener('pointermove', e => { this.mx = e.clientX / innerWidth - .5; this.my = e.clientY / innerHeight - .5; });
+  },
+  resize() { const d = Math.min(2, devicePixelRatio || 1); this.w = innerWidth; this.h = innerHeight; this.c.width = this.w * d; this.c.height = this.h * d; this.ctx.setTransform(d, 0, 0, d, 0, 0); },
+  update(dt, t) {
+    const { ctx, w, h } = this; this.px = lerp(this.px, this.tpx, Math.min(1, dt * 1.6));
+    ctx.fillStyle = '#03040b'; ctx.fillRect(0, 0, w, h);
+    const hue = this.hue || 0;
+    const g1 = ctx.createRadialGradient(w * (.18 - this.px * .02), h * .1, 0, w * .18, h * .1, w * .55); g1.addColorStop(0, `rgba(255,${140 + hue * 30},50,.16)`); g1.addColorStop(1, 'rgba(255,140,50,0)'); ctx.fillStyle = g1; ctx.fillRect(0, 0, w, h);
+    const g2 = ctx.createRadialGradient(w * (.85 - this.px * .03), h * .9, 0, w * .85, h * .9, w * .6); g2.addColorStop(0, 'rgba(90,70,220,.2)'); g2.addColorStop(1, 'rgba(90,70,220,0)'); ctx.fillStyle = g2; ctx.fillRect(0, 0, w, h);
+    const g3 = ctx.createRadialGradient(w * .55, h * .45, 0, w * .55, h * .45, w * .45); g3.addColorStop(0, 'rgba(40,140,255,.07)'); g3.addColorStop(1, 'rgba(40,140,255,0)'); ctx.fillStyle = g3; ctx.fillRect(0, 0, w, h);
+    for (const s of this.stars) {
+      let x = ((s.x - this.px * .06 * s.z - this.mx * .012 * s.z) % 1 + 1) % 1 * w, y = ((s.y - this.my * .012 * s.z) % 1 + 1) % 1 * h;
+      ctx.globalAlpha = (.35 + .65 * Math.abs(Math.sin(t * .6 + s.tw))) * s.z; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y, s.r, 0, TAU); ctx.fill();
+    }
+    for (const d of this.dust) { d.x = (d.x + d.vx * dt + 1) % 1; d.y = (d.y + d.vy * dt + 1) % 1; ctx.globalAlpha = .5; glow(ctx, ((d.x - this.px * .1) % 1 + 1) % 1 * w, d.y * h, d.r * 4, d.c, .5); }
+    ctx.globalAlpha = 1;
+  }
+};
+
+/* ---------- Сцены и каркас слайда ---------- */
+const SCENES = [];
+function shell(sc, o) {
+  const s = el('section', 'scene'); s.dataset.i = SCENES.indexOf(sc);
+  const g = el('div', 'grid' + (o.wide ? ' wide' : '')); s.appendChild(g);
+  const info = el('div', 'info glass'); g.appendChild(info);
+  info.appendChild(el('div', 'kicker rv', o.kicker));
+  info.appendChild(el('h1', 'rv', o.title));
+  if (o.lead) info.appendChild(el('p', 'lead rv', o.lead));
+  if (o.pts) { const ul = el('ul', 'pts rv'); o.pts.forEach(p => { const li = el('li', p[0] === '|' ? '' : (p.split('|')[0] || ''), p.includes('|') ? p.split('|')[1] : p); ul.appendChild(li); }); info.appendChild(ul); }
+  const controls = el('div', 'controls rv'); info.appendChild(controls);
+  const visual = el('div', 'visual'); g.appendChild(visual);
+  $('#stage').appendChild(s); sc.root = s;
+  return { info, controls, visual, sec: s };
+}
+function caption(v, html) { const c = el('div', 'cap', html); v.appendChild(c); return c; }
+function hud(v, pos) { const h = el('div', 'hud ' + pos); v.appendChild(h); return h; }
+
+/* ---------- Простой 3D-«орбитальный» контроллер ---------- */
+function dragRotate(dom, st) { // st: {yaw,pitch,tyaw,tpitch,dist}
+  let d = false, lx = 0, ly = 0; dom.dataset.noswipe = 1;
+  dom.addEventListener('pointerdown', e => { d = true; lx = e.clientX; ly = e.clientY; st.user = performance.now(); dom.setPointerCapture(e.pointerId); });
+  dom.addEventListener('pointermove', e => { if (!d) return; st.tyaw -= (e.clientX - lx) * .008; st.tpitch = clamp(st.tpitch + (e.clientY - ly) * .006, st.pmin ?? -1.2, st.pmax ?? 1.2); lx = e.clientX; ly = e.clientY; st.user = performance.now(); });
+  const up = () => d = false; dom.addEventListener('pointerup', up); dom.addEventListener('pointercancel', up);
+  dom.addEventListener('wheel', e => { if (st.dist) { st.tdist = clamp((st.tdist || st.dist) * (1 + e.deltaY * .001), st.dmin || 3, st.dmax || 60); e.preventDefault(); } }, { passive: false });
+}
+function glowTexture(inner = 'rgba(255,240,200,1)', mid = 'rgba(255,170,60,.5)') {
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); const g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+  g.addColorStop(0, inner); g.addColorStop(.25, mid); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c);
+}
+function cellTexture(cols = 6, rows = 10, base = '#0b2a6b', W = 256, H = 400) {
+  const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+  x.fillStyle = '#cfd6e6'; x.fillRect(0, 0, W, H);
+  const cw = W / cols, ch = H / rows;
+  for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
+    const g = x.createLinearGradient(i * cw, j * ch, i * cw + cw, j * ch + ch); g.addColorStop(0, '#1d4fb8'); g.addColorStop(1, base);
+    x.fillStyle = g; x.fillRect(i * cw + 2, j * ch + 2, cw - 4, ch - 4);
+    x.strokeStyle = 'rgba(200,220,255,.35)'; x.lineWidth = 1; for (let k = 1; k < 4; k++) { x.beginPath(); x.moveTo(i * cw + 2, j * ch + ch * k / 4); x.lineTo(i * cw + cw - 2, j * ch + ch * k / 4); x.stroke(); }
+    x.strokeStyle = 'rgba(220,230,255,.5)'; x.beginPath(); x.moveTo(i * cw + cw / 2, j * ch + 2); x.lineTo(i * cw + cw / 2, j * ch + ch - 2); x.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
+}
+function makeRenderer(container, shadows) {
+  const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+  r.setPixelRatio(Math.min(2, devicePixelRatio || 1)); if (shadows) { r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap; }
+  r.outputEncoding = THREE.sRGBEncoding; container.appendChild(r.domElement);
+  return r;
+}
+function fit3D(r, cam, container) { const b = container.getBoundingClientRect(); if (!b.width) return; r.setSize(b.width, b.height, false); r.domElement.style.width = b.width + 'px'; r.domElement.style.height = b.height + 'px'; cam.aspect = b.width / b.height; cam.updateProjectionMatrix(); }
+</script>
+<script>
+/* =====================================================================
+   СЦЕНА 1 — Вступление: Солнце, панель, поток фотонов, день/ночь
+   ===================================================================== */
+SCENES.push({
+  title: 'Вступление',
+  notes: `<p>Каким способом вообще можно извлечь энергию Солнца и перевести её в электрическую?</p><p>Для этого широко используются полупроводниковые материалы — например, кремний (Si), арсенид галлия (GaAs) и другие.</p><p>Чтобы хорошо разобраться и понять, что это <b>не магия, а естественные физические процессы</b>, нужно углубиться в физические процессы, которые происходят на микроуровне в солнечных фотоэлементах.</p>`,
+  fix: 'Исправлено: «ARSI Gal» → арсенид галлия (GaAs).',
+  init() {
+    const s = shell(this, { kicker: '01 · Вступление', title: 'Как извлечь <span class="g">энергию Солнца</span> и превратить её в электричество?', lead: 'Для этого широко используются <b>полупроводниковые материалы</b>. Чтобы понять, как они работают, заглянем на микроуровень — внутрь солнечного фотоэлемента.' });
+    this.v = s.visual; s.visual.classList.add('drag');
+    const chips = el('div', 'row'); s.controls.before(chips); chips.classList.add('rv');
+    [['Si', 'кремний · Eg 1,12 эВ'], ['GaAs', 'арсенид галлия · 1,42 эВ'], ['CdTe', 'теллурид кадмия · 1,5 эВ'], ['CIGS', '≈1,1–1,2 эВ'], ['Перовскиты', '≈1,5–1,6 эВ']].forEach(([a, b]) => chips.appendChild(el('span', 'chip', `<b>${a}</b><i>${b}</i>`)));
+    const tg = el('div', 'tag rv', '<span style="background:linear-gradient(92deg,#fff,#ffcf70 40%,#ff8a24);-webkit-background-clip:text;background-clip:text;color:transparent">Это не магия.</span><br><span style="color:rgba(255,255,255,.55)">Это физика.</span>');
+    s.controls.before(tg);
+    this.t = 12.5;
+    this.sl = UI.slider(s.controls, { label: 'Время суток', min: 0, max: 24, step: .1, value: this.t, fmt: v => { const h = Math.floor(v), m = Math.round((v - h) * 60); return `${String(h % 24).padStart(2, '0')}:${String(m === 60 ? 0 : m).padStart(2, '0')}`; }, onChange: v => this.t = v });
+    const r = el('div', 'row'); s.controls.appendChild(r);
+    this.auto = false; const b = UI.button(r, { text: '▶ Сутки за 12 с', onClick: () => { this.auto = !this.auto; b.textContent = this.auto ? '❚❚ Пауза' : '▶ Сутки за 12 с'; } });
+    const h = hud(s.visual, 'tr'); this.cP = Counter(stat(h, 'Мощность панели', 'sun', 'Вт')); this.cE = Counter(stat(h, 'Высота Солнца', '', '°'), v => fmt(v, 0));
+    caption(s.visual, '<b>Поток фотонов</b> от Солнца падает на солнечную панель · перетащите сцену мышью');
+    if (HAS3D) this.init3D(); else { this.cv = Cv(s.visual); this.ph = []; }
+  },
+  init3D() {
+    const v = this.v, R = this.r = makeRenderer(v, true), S = this.s = new THREE.Scene();
+    const cam = this.cam = new THREE.PerspectiveCamera(42, 1, .1, 300);
+    this.orb = { yaw: 0, pitch: .2, tyaw: 0, tpitch: .2, dist: 10, tdist: 10, pmin: -.05, pmax: .9, dmin: 6, dmax: 20 }; dragRotate(R.domElement, this.orb);
+    S.fog = new THREE.Fog(0x05060f, 25, 90);
+    const ground = new THREE.Mesh(new THREE.CircleGeometry(60, 64), new THREE.MeshStandardMaterial({ color: 0x0e1528, roughness: 1 })); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; S.add(ground);
+    const grid = new THREE.GridHelper(60, 60, 0x24305a, 0x141a33); grid.position.y = .01; grid.material.transparent = true; grid.material.opacity = .45; S.add(grid);
+    this.hemi = new THREE.HemisphereLight(0x8fb4ff, 0x1a1020, .4); S.add(this.hemi);
+    this.dl = new THREE.DirectionalLight(0xfff0d0, 1.4); this.dl.castShadow = true; this.dl.shadow.mapSize.set(1024, 1024); Object.assign(this.dl.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 1, far: 60 }); S.add(this.dl); S.add(this.dl.target);
+    // панель
+    const pg = this.pg = new THREE.Group(); pg.position.set(0, 1.2, 1); S.add(pg);
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(4.2, .08, 2.6), new THREE.MeshStandardMaterial({ color: 0xaab4c8, metalness: .8, roughness: .3 })); frame.castShadow = true; pg.add(frame);
+    this.pm = new THREE.MeshStandardMaterial({ map: cellTexture(10, 6, '#0a2463', 512, 300), metalness: .35, roughness: .28, emissive: 0x1c46ff, emissiveIntensity: .05 });
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(4.05, 2.45), this.pm); face.rotation.x = -Math.PI / 2; face.position.y = .045; pg.add(face);
+    pg.rotation.x = .62; // наклон к Солнцу
+    const legM = new THREE.MeshStandardMaterial({ color: 0x5a6378, metalness: .7, roughness: .4 });
+    [[-1.6, .6], [1.6, .6], [-1.6, -.3], [1.6, -.3]].forEach(([x, z], i) => { const h = i < 2 ? .55 : 1.75; const l = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, h, 8), legM); l.position.set(x, h / 2, 1 + z + (i < 2 ? .4 : -.5)); l.castShadow = true; S.add(l); });
+    // Солнце
+    this.sun = new THREE.Mesh(new THREE.SphereGeometry(1.1, 32, 24), new THREE.MeshBasicMaterial({ color: 0xffd98a })); S.add(this.sun);
+    this.sg = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); this.sg.scale.set(11, 11, 1); this.sun.add(this.sg);
+    // звёзды
+    const sp = []; for (let i = 0; i < 900; i++) { const th = rnd(0, TAU), ph = rnd(.05, 1.5), r = 120; sp.push(Math.cos(th) * Math.cos(ph) * r, Math.sin(ph) * r, Math.sin(th) * Math.cos(ph) * r); }
+    const sgeo = new THREE.BufferGeometry(); sgeo.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
+    this.stars = new THREE.Points(sgeo, new THREE.PointsMaterial({ color: 0xffffff, size: .7, transparent: true, opacity: 0, depthWrite: false })); S.add(this.stars);
+    // фотоны
+    this.N = 260; const pp = new Float32Array(this.N * 3); this.pd = Array.from({ length: this.N }, () => ({ p: Math.random(), tx: rnd(-1.9, 1.9), tz: rnd(-1.1, 1.1), sp: rnd(.35, .6) }));
+    const pgeo = new THREE.BufferGeometry(); pgeo.setAttribute('position', new THREE.BufferAttribute(pp, 3));
+    this.phot = new THREE.Points(pgeo, new THREE.PointsMaterial({ size: .32, map: glowTexture('rgba(255,250,220,1)', 'rgba(255,190,80,.6)'), color: 0xffd27a, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); S.add(this.phot);
+    this.tmpV = new THREE.Vector3();
+  },
+  enter() { this.orb && (this.orb.dist = 22, this.orb.yaw = -.6); },
+  leave() { },
+  sunState() { const a = Math.PI * (this.t - 6) / 12; const el = Math.sin(a); return { a, el, day: clamp(el * 3 + .3, 0, 1) }; },
+  update(dt, t) {
+    if (this.auto) { this.t = (this.t + dt * 2) % 24; this.sl.set(this.t, true); }
+    const st = this.sunState(), elev = Math.max(0, st.el); const P = 400 * Math.pow(elev, 1.25) * (st.el > 0 ? 1 : 0);
+    this.cP.set(P); this.cE.set(Math.max(-90, Math.asin(clamp(st.el, -1, 1)) * 180 / Math.PI * .62));
+    BG.hue = st.day;
+    if (!HAS3D) return this.draw2D(dt, t, st, P);
+    const { r: R, s: S, cam, orb } = this; fit3D(R, cam, this.v);
+    if (performance.now() - (orb.user || 0) > 2500) orb.tyaw += dt * .05 * Math.sign(Math.sin(t * .05) + .3);
+    orb.yaw = lerp(orb.yaw, orb.tyaw, dt * 3); orb.pitch = lerp(orb.pitch, orb.tpitch, dt * 3); orb.dist = lerp(orb.dist, orb.tdist, dt * 2);
+    const yaw = clamp(orb.yaw, -1.3, 1.3); orb.tyaw = clamp(orb.tyaw, -1.3, 1.3);
+    cam.position.set(Math.sin(yaw) * orb.dist * Math.cos(orb.pitch), 2.2 + Math.sin(orb.pitch) * orb.dist, Math.cos(yaw) * orb.dist * Math.cos(orb.pitch)); cam.lookAt(0, 2.6, -2);
+    const sx = -Math.cos(st.a) * 13, sy = 1 + st.el * 10, sz = -12; this.sun.position.set(sx, sy, sz);
+    this.dl.position.set(sx, Math.max(.5, sy), sz); this.dl.intensity = 1.6 * elev; this.hemi.intensity = .15 + .45 * st.day;
+    const night = new THREE.Color(0x03040c), dawn = new THREE.Color(0x4a2140), day = new THREE.Color(0x1d4a8f);
+    const sky = st.el < 0 ? night.clone().lerp(dawn, clamp(1 + st.el * 4, 0, 1) * .6) : dawn.clone().lerp(day, clamp(st.el * 2.2, 0, 1));
+    S.background = sky; S.fog.color = sky; this.stars.material.opacity = clamp(-st.el * 3 + .15, 0, 1);
+    this.sun.material.color.setHSL(.1 + .03 * clamp(st.el * 2, 0, 1), 1, .55 + .2 * clamp(st.el * 2, 0, 1)); this.sg.material.opacity = clamp(st.el * 4 + .6, 0, 1);
+    this.pm.emissiveIntensity = .04 + .5 * elev * (.85 + .15 * Math.sin(t * 6));
+    const pos = this.phot.geometry.attributes.position.array; const on = st.el > 0; this.phot.material.opacity = clamp(st.el * 4, 0, 1);
+    this.pg.updateMatrixWorld();
+    for (let i = 0; i < this.N; i++) {
+      const d = this.pd[i]; d.p += dt * d.sp * (on ? 1 : 0); if (d.p > 1) { d.p = 0; d.tx = rnd(-1.9, 1.9); d.tz = rnd(-1.1, 1.1); }
+      const tv = this.tmpV.set(d.tx, .06, d.tz).applyMatrix4(this.pg.matrixWorld);
+      pos[i * 3] = lerp(sx, tv.x, d.p); pos[i * 3 + 1] = lerp(sy, tv.y, d.p); pos[i * 3 + 2] = lerp(sz, tv.z, d.p);
+    }
+    this.phot.geometry.attributes.position.needsUpdate = true;
+    R.render(S, cam);
+  },
+  draw2D(dt, t, st, P) {
+    const { ctx, w, h } = this.cv; if (this.cv.w < 2) this.cv.resize();
+    const g = ctx.createLinearGradient(0, 0, 0, h); const d = st.day; g.addColorStop(0, `rgb(${lerp(3, 29, d)},${lerp(4, 74, d)},${lerp(12, 143, d)})`); g.addColorStop(1, `rgb(${lerp(20, 90, d)},${lerp(10, 50, d)},${lerp(30, 80, d)})`); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    const sx = w / 2 - Math.cos(st.a) * w * .4, sy = h * .75 - st.el * h * .6;
+    glow(ctx, sx, sy, 120, C.sun, .7); ctx.fillStyle = '#ffe2a0'; ctx.beginPath(); ctx.arc(sx, sy, 28, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#0e1528'; ctx.fillRect(0, h * .75, w, h * .25);
+    const px = w * .5, py = h * .72; ctx.fillStyle = '#163c96'; ctx.beginPath(); ctx.moveTo(px - 160, py); ctx.lineTo(px + 160, py); ctx.lineTo(px + 120, py - 70); ctx.lineTo(px - 120, py - 70); ctx.fill();
+    if (st.el > 0) { this.ph.push({ p: 0, tx: px + rnd(-140, 140), ty: py - rnd(0, 60) }); this.ph.forEach(f => { f.p += dt * .8; glow(ctx, lerp(sx, f.tx, f.p), lerp(sy, f.ty, f.p), 6, C.sun, .9); }); this.ph = this.ph.filter(f => f.p < 1); }
+  }
+});
+
+/* =====================================================================
+   СЦЕНА 2 — Кристаллическая решётка кремния (рис. 1)
+   ===================================================================== */
+SCENES.push({
+  title: 'Решётка кремния',
+  notes: `<p>Рассмотрим кремний — это основной материал, который используется в солнечных элементах.</p><p>Кремний в полупроводниках имеет форму <b>кристаллической решётки</b>. Каждый атом кремния <b>четырёхвалентен</b>, то есть имеет четыре электрона на внешнем энергетическом уровне, и образует с каждым из четырёх соседних атомов <b>ковалентную связь</b> — общую пару электронов.</p><p><b>Рисунок 1</b> — схематическая проекция ковалентных связей атома кремния.</p>`,
+  fix: 'Исправлено: «четыре атома на внешнем уровне» → четыре валентных электрона.',
+  init() {
+    const s = shell(this, { kicker: '02 · Рис. 1', title: 'Кристаллическая <span class="b">решётка кремния</span>', lead: 'Каждый атом кремния <b>четырёхвалентен</b>: у него 4 электрона на внешнем уровне. С каждым из четырёх соседей он образует <b>ковалентную связь</b> — общую пару электронов.', pts: ['e|Si: Z = 14, конфигурация …3s²3p² — <b>4 валентных электрона</b>', 'f|Решётка типа алмаза, постоянная a ≈ 0,543 нм', '|Наведите курсор на атом — подсветятся его 4 связи'] });
+    this.v = s.visual; s.visual.classList.add('drag');
+    this.mode = HAS3D ? '3d' : '2d';
+    this.seg = UI.seg(s.controls, { label: 'Вид', options: [{ v: '3d', t: '3D-решётка' }, { v: '2d', t: '2D-проекция (рис. 1)' }], value: this.mode, onChange: v => { if (v === '3d' && !HAS3D) { toast('WebGL недоступен — показана 2D-проекция'); this.seg.set('2d', true); return; } this.mode = v; this.apply(); } });
+    const lg = el('div', 'legend', `<span><i style="background:#9fb4e0"></i>атом Si</span><span><i style="background:${C.field}"></i>ковалентная связь</span><span><i style="background:${C.el}"></i>валентный электрон</span>`); s.controls.appendChild(lg);
+    this.cap = caption(s.visual, '<b>Рис. 1.</b> Схематическая проекция ковалентных связей атома кремния');
+    this.tip = el('div', 'tip'); s.visual.appendChild(this.tip);
+    this.cv = Cv(s.visual); this.cv.c.style.zIndex = 2; this.hov2 = 12;
+    this.cv.c.addEventListener('pointermove', e => { const b = this.cv.c.getBoundingClientRect(); this.m2 = { x: e.clientX - b.left, y: e.clientY - b.top }; });
+    this.cv.c.addEventListener('pointerleave', () => this.m2 = null);
+    if (HAS3D) this.init3D();
+    this.apply();
+  },
+  apply() { this.cv.c.style.display = this.mode === '2d' ? 'block' : 'none'; if (this.r) this.r.domElement.style.display = this.mode === '3d' ? 'block' : 'none'; this.tip.classList.remove('show'); },
+  init3D() {
+    const v = this.v, R = this.r = makeRenderer(v), S = this.s = new THREE.Scene(); const cam = this.cam = new THREE.PerspectiveCamera(40, 1, .1, 100);
+    this.orb = { yaw: .6, pitch: .35, tyaw: .6, tpitch: .35, dist: 9.5, tdist: 9.5, dmin: 5, dmax: 18 }; dragRotate(R.domElement, this.orb);
+    S.add(new THREE.AmbientLight(0x8090c0, .55)); const d1 = new THREE.DirectionalLight(0xffffff, .9); d1.position.set(5, 8, 6); S.add(d1); const d2 = new THREE.PointLight(0x7a60ff, 1.2, 30); d2.position.set(-6, -3, -4); S.add(d2);
+    const G = this.G = new THREE.Group(); S.add(G);
+    const basis = [[0, 0, 0], [0, .5, .5], [.5, 0, .5], [.5, .5, 0]]; const n = 2, A = 2.3, P = [];
+    for (let i = 0; i <= n; i++) for (let j = 0; j <= n; j++) for (let k = 0; k <= n; k++) for (const b of basis) for (const o of [0, .25]) {
+      const p = [i + b[0] + o, j + b[1] + o, k + b[2] + o]; if (p.every(c => c <= n + 1e-6) && !P.some(q => Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) < 1e-3)) P.push(p);
+    }
+    const atomG = new THREE.SphereGeometry(.22, 28, 20), elG = new THREE.SphereGeometry(.06, 12, 10);
+    this.atoms = P.map(p => { const m = new THREE.Mesh(atomG, new THREE.MeshStandardMaterial({ color: 0x9fb4e0, metalness: .35, roughness: .35, emissive: 0x141c38 })); m.position.set((p[0] - n / 2) * A, (p[1] - n / 2) * A, (p[2] - n / 2) * A); m.userData = { bonds: [] }; G.add(m); return m; });
+    this.bonds = []; const L = Math.sqrt(3) / 4 * A, up = new THREE.Vector3(0, 1, 0);
+    for (let i = 0; i < this.atoms.length; i++) for (let j = i + 1; j < this.atoms.length; j++) {
+      const a = this.atoms[i].position, b = this.atoms[j].position; if (Math.abs(a.distanceTo(b) - L) > .02) continue;
+      const dir = b.clone().sub(a).normalize(); const mid = a.clone().add(b).multiplyScalar(.5);
+      const cyl = new THREE.Mesh(new THREE.CylinderGeometry(.035, .035, L - .3, 8), new THREE.MeshBasicMaterial({ color: 0x7a60ff, transparent: true, opacity: .5 }));
+      cyl.position.copy(mid); cyl.quaternion.setFromUnitVectors(up, dir); G.add(cyl);
+      const es = [0, 1].map(k => { const e = new THREE.Mesh(elG, new THREE.MeshBasicMaterial({ color: 0x3cc8ff })); G.add(e); return e; });
+      const bd = { cyl, es, mid, dir, ph: rnd(0, TAU), hi: 0 }; this.bonds.push(bd); this.atoms[i].userData.bonds.push(bd); this.atoms[j].userData.bonds.push(bd);
+    }
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('rgba(150,120,255,.5)', 'rgba(60,120,255,.15)'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); halo.scale.set(16, 16, 1); S.add(halo);
+    this.ray = new THREE.Raycaster(); this.mouse = new THREE.Vector2(9, 9); this.hov = null;
+    R.domElement.addEventListener('pointermove', e => { const b = R.domElement.getBoundingClientRect(); this.mouse.set((e.clientX - b.left) / b.width * 2 - 1, -(e.clientY - b.top) / b.height * 2 + 1); this.mpx = { x: e.clientX - b.left, y: e.clientY - b.top }; });
+    R.domElement.addEventListener('pointerleave', () => this.mouse.set(9, 9));
+  },
+  enter() { if (this.orb) { this.orb.dist = 20; this.orb.yaw = -1; } setTimeout(() => SEGS.forEach(f => f()), 50); },
+  leave() { },
+  update(dt, t) { if (this.mode === '2d' || !HAS3D) this.draw2D(dt, t); else this.draw3D(dt, t); },
+  draw3D(dt, t) {
+    const { r: R, s: S, cam, orb } = this; fit3D(R, cam, this.v);
+    if (performance.now() - (orb.user || 0) > 2000) orb.tyaw += dt * .18;
+    orb.yaw = lerp(orb.yaw, orb.tyaw, dt * 4); orb.pitch = lerp(orb.pitch, orb.tpitch, dt * 4); orb.dist = lerp(orb.dist, orb.tdist, dt * 2.5);
+    cam.position.set(Math.sin(orb.yaw) * Math.cos(orb.pitch) * orb.dist, Math.sin(orb.pitch) * orb.dist, Math.cos(orb.yaw) * Math.cos(orb.pitch) * orb.dist); cam.lookAt(0, 0, 0);
+    this.ray.setFromCamera(this.mouse, cam); const hit = this.ray.intersectObjects(this.atoms)[0]; const h = hit ? hit.object : null;
+    if (h !== this.hov) { if (h) Snd.click(); this.hov = h; }
+    for (const a of this.atoms) { const on = a === h; a.material.emissive.setHex(on ? 0x8a5a00 : 0x141c38); a.material.color.setHex(on ? 0xffd27a : 0x9fb4e0); a.scale.setScalar(lerp(a.scale.x, on ? 1.35 : 1, dt * 10)); }
+    for (const b of this.bonds) {
+      const tg = h && h.userData.bonds.includes(b) ? 1 : 0; b.hi = lerp(b.hi, tg, dt * 8);
+      b.cyl.material.color.setRGB(lerp(.48, 1, b.hi), lerp(.38, .75, b.hi), lerp(1, .3, b.hi)); b.cyl.material.opacity = .45 + .5 * b.hi; b.cyl.scale.set(1 + b.hi * 1.6, 1, 1 + b.hi * 1.6);
+      b.es.forEach((e, k) => { const o = (k ? 1 : -1) * (.16 + .05 * Math.sin(t * 3 + b.ph)); e.position.copy(b.mid).addScaledVector(b.dir, o); e.scale.setScalar(1 + b.hi * .9); });
+    }
+    if (h && this.mpx) { const nb = h.userData.bonds.length; this.tip.innerHTML = `<b style="color:${C.sun}">Атом Si</b> · 4 валентных электрона<br>Связей на фрагменте: <b>${nb}</b>${nb < 4 ? ' <span style="color:var(--mut)">(на границе; в кристалле — 4)</span>' : ' — каждая из 2 общих e⁻'}`; this.tip.style.left = Math.min(this.mpx.x + 16, this.v.clientWidth - 250) + 'px'; this.tip.style.top = (this.mpx.y + 14) + 'px'; this.tip.classList.add('show'); } else this.tip.classList.remove('show');
+    R.render(S, cam);
+  },
+  draw2D(dt, t) {
+    const cv = this.cv; if (cv.w < 2) cv.resize(); const { ctx, w, h } = cv; cv.clear();
+    const N = 5, sp = Math.min(w / (N + .6), (h - 60) / (N + .4)), ox = w / 2 - sp * (N - 1) / 2, oy = h / 2 - 18 - sp * (N - 1) / 2, ar = sp * .2;
+    const P = (i, j) => [ox + i * sp, oy + j * sp];
+    let hov = -1; if (this.m2) { for (let i = 0; i < N * N; i++) { const [x, y] = P(i % N, Math.floor(i / N)); if (Math.hypot(this.m2.x - x, this.m2.y - y) < ar * 1.6) hov = i; } }
+    if (hov !== this.hovL && hov >= 0) Snd.click(); this.hovL = hov; const H = hov >= 0 ? hov : 12;
+    const hi = (hov >= 0 ? hov : 12), hx = hi % N, hy = Math.floor(hi / N);
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) for (const [di, dj] of [[1, 0], [0, 1]]) {
+      const i2 = i + di, j2 = j + dj; if (i2 >= N || j2 >= N) continue; const [x0, y0] = P(i, j), [x1, y1] = P(i2, j2);
+      const lit = (i === hx && j === hy) || (i2 === hx && j2 === hy); const off = sp * .06;
+      ctx.strokeStyle = lit ? 'rgba(255,200,90,.95)' : 'rgba(169,112,255,.55)'; ctx.lineWidth = lit ? 3 : 2; if (lit) { ctx.shadowColor = C.sun; ctx.shadowBlur = 14; }
+      for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x0 + dj * off * s, y0 + di * off * s); ctx.lineTo(x1 + dj * off * s, y1 + di * off * s); ctx.stroke(); }
+      ctx.shadowBlur = 0;
+      for (const k of [.36, .64]) { const wob = Math.sin(t * 3 + i * 1.3 + j * 2.1 + k * 9) * sp * .025; electron(ctx, lerp(x0, x1, k) + di * wob, lerp(y0, y1, k) + dj * wob, lit ? 6.5 : 5, 1, lit); }
+    }
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const [x, y] = P(i, j), lit = i === hx && j === hy; glow(ctx, x, y, ar * 2.4, lit ? C.sun : '#7f95d6', lit ? .55 : .25);
+      const g = ctx.createRadialGradient(x - ar * .3, y - ar * .3, 0, x, y, ar); g.addColorStop(0, lit ? '#fff2c4' : '#e3ebff'); g.addColorStop(1, lit ? '#ff9a2e' : '#5c6fa6'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, ar * (lit ? 1.15 : 1), 0, TAU); ctx.fill();
+      txt(ctx, 'Si', x, y, { a: 'center', s: Math.max(10, ar * .7), w: 700, c: lit ? '#3a1d00' : '#0b1430' });
+    }
+    if (this.mode === '2d') { const [x, y] = P(hx, hy); this.tip.innerHTML = `<b style="color:${C.sun}">Атом Si</b>: 4 валентных электрона<br>4 ковалентные связи · по 2 общих e⁻ на связь`; this.tip.style.left = Math.min(x + ar * 1.6, w - 250) + 'px'; this.tip.style.top = (y - ar * 2.8) + 'px'; this.tip.classList.add('show'); }
+  }
+});
+
+/* =====================================================================
+   СЦЕНА 3 — Энергетические зоны, электронно-дырочная пара, рекомбинация
+   ===================================================================== */
+SCENES.push({
+  title: 'Энергетические зоны',
+  notes: `<p>Проблема в том, что при абсолютном нуле электроны находятся в <b>валентной зоне</b> и не могут переносить заряд — им нужно попасть в <b>зону проводимости</b>.</p><p>Каким образом это можно сделать? Например, как-то вынудить электрон выйти из валентной зоны. Когда электрон выходит, на его месте остаётся <b>квазичастица — дырка</b>, которая по знаку заряда является положительной.</p><p>Чтобы перейти в зону проводимости, электрону нужно преодолеть <b>запрещённую зону</b> — это та энергия, которую нужно сообщить электрону. Как раз энергия фотона позволяет электрону перейти из валентной зоны в зону проводимости. Ширина запрещённой зоны кремния — примерно <b>1,12 эВ</b> (при 300 K): столько энергии нужно, чтобы перейти из валентной зоны в зону проводимости.</p><p>После этого появляется <b>электронно-дырочная пара</b>: электрон уходит, а на его месте остаётся вакантное место — дырка, она заряжена положительно.</p><p>Когда происходит обратный процесс — электрон заполняет дырку, — это <b>рекомбинация</b> («нейтрализация» пары): электрон и дырка исчезают как свободные носители и больше не участвуют в проводимости, а их энергия выделяется в виде тепла или света.</p>`,
+  fix: 'Исправлено: «ковалентная зона» → валентная зона; «тыща один и один,12» → 1,12 эВ; «нейтрализация» пояснена как исчезновение пары свободных носителей с выделением энергии.',
+  init() {
+    const s = shell(this, { kicker: '03 · Энергетические зоны', title: 'Валентная зона, <span class="g">запрещённая зона</span>, зона проводимости', lead: 'При <b>абсолютном нуле</b> все электроны в валентной зоне — они «заперты» и не переносят заряд. Чтобы попасть в зону проводимости, электрон должен получить энергию <b>не меньше E<sub>g</sub></b>.', pts: ['e|Электрон уходит в зону проводимости → <b>свободный электрон</b>', 'h|На его месте — <b>дырка</b>, квазичастица с зарядом +e', '|Электрон возвращается в дырку → <b>рекомбинация</b>: пара исчезает, энергия выделяется'] });
+    this.cv = Cv(s.visual); this.T = 0;
+    UI.slider(s.controls, { label: 'Температура', min: 0, max: 600, step: 5, value: 0, unit: ' K', c1: '#3c7bff', c2: '#ff6a3c', onChange: v => this.T = v });
+    const r = el('div', 'row'); s.controls.appendChild(r);
+    UI.button(r, { text: '⚡ Выбить электрон', kind: 'pri', onClick: () => this.shoot() });
+    UI.button(r, { text: '↺ Рекомбинация', kind: 'pnk', onClick: () => this.recomb() });
+    const hd = hud(s.visual, 'tr'); this.cEg = Counter(stat(hd, 'Eg(T), Si', 'fi', 'эВ'), v => fmt(v, 3)); this.cNi = Counter(stat(hd, 'nᵢ, собств.', '', 'см⁻³'), v => sci(v)); this.cN = Counter(stat(hd, 'e⁻ в ЗП', 'el'), v => fmt(v)); this.cP = Counter(stat(hd, 'дырок', 'ho'), v => fmt(v));
+    caption(s.visual, '<b>Зонная диаграмма кремния.</b> Фотон с E ≥ E<sub>g</sub> рождает электронно-дырочную пару');
+    this.cols = 18; this.rows = 3; this.slots = new Array(this.cols * this.rows).fill(1); this.free = []; this.fx = []; this.moves = []; this.acc = 0; this.hopT = 0;
+  },
+  geo() { const { w, h } = this.cv, L = 90, R = w - 30; return { L, R, W: R - L, cb: [h * .14, h * .32], vb: [h * .56, h * .8] }; },
+  slotPos(i) { const g = this.geo(), c = i % this.cols, r = Math.floor(i / this.cols); return [g.L + (c + .5) * g.W / this.cols, g.vb[0] + (r + .5) * (g.vb[1] - g.vb[0]) / this.rows]; },
+  excite(i, thermal) {
+    this.slots[i] = 0; const [x, y] = this.slotPos(i), g = this.geo(); const tx = clamp(x + rnd(-60, 60), g.L + 10, g.R - 10), ty = rnd(g.cb[0] + 12, g.cb[1] - 12);
+    this.fx.push({ k: 'jump', x0: x, y0: y, x1: tx, y1: ty, t: 0 }); this.fx.push({ k: 'flash', x, y, t: 0, c: thermal ? '#ff7a3c' : C.sun }); if (!thermal) Snd.ding(); else Snd.click();
+  },
+  shoot() { const filled = this.slots.map((v, i) => v ? i : -1).filter(i => i >= 0 && !this.fx.some(f => f.k === 'ph' && f.i === i)); if (!filled.length) return; const i = filled[Math.floor(rnd(0, filled.length))]; const [x, y] = this.slotPos(i); this.fx.push({ k: 'ph', i, x0: x - 220, y0: -20, x1: x, y1: y, t: 0 }); Snd.whoosh(); },
+  recomb() { if (!this.free.length) { toast('Нет свободных электронов — сначала выбейте электрон'); return; } const holes = this.slots.map((v, i) => !v ? i : -1).filter(i => i >= 0 && !this.fx.some(f => f.k === 'fall' && f.i === i)); if (!holes.length) return; const e = this.free.shift(); let best = holes[0], bd = 1e9; for (const i of holes) { const [x, y] = this.slotPos(i), d = Math.hypot(x - e.x, y - e.y); if (d < bd) { bd = d; best = i; } } const [x, y] = this.slotPos(best); this.fx.push({ k: 'fall', i: best, x0: e.x, y0: e.y, x1: x, y1: y, t: 0 }); },
+  enter() { this.cv.resize(); }, leave() { },
+  update(dt, t) {
+    const cv = this.cv; if (cv.w < 2) cv.resize(); const { ctx, w, h } = cv, g = this.geo(); cv.clear();
+    const T = this.T, k = 8.617e-5, Eg = 1.17 - 4.73e-4 * T * T / (T + 636); const ni = T > 0 ? 1.7e19 * Math.pow(T / 300, 1.5) * Math.exp(-Eg / (2 * k * T)) : 0;
+    this.cEg.set(Eg); this.cNi.set(ni);
+    // тепловая генерация и рекомбинация (визуализация в логарифмическом масштабе)
+    if (T > 0) { const ni600 = 1.7e19 * Math.pow(2, 1.5) * Math.exp(-1.032 / (2 * k * 600)); const gR = 2.4 * Math.pow(ni / ni600, .25); if (Math.random() < gR * dt) { const f = this.slots.map((v, i) => v ? i : -1).filter(i => i >= 0); if (f.length) this.excite(f[Math.floor(rnd(0, f.length))], true); } }
+    if (this.free.length && Math.random() < this.free.length * (T > 0 ? .12 : .025) * dt && !this.fx.some(f => f.k === 'fall')) this.recomb();
+    // зоны
+    const band = (y0, y1, col, a) => { const gr = ctx.createLinearGradient(0, y0, 0, y1); gr.addColorStop(0, hexA(col, a)); gr.addColorStop(1, hexA(col, a * .35)); ctx.fillStyle = gr; rr(ctx, g.L, y0, g.W, y1 - y0, 14); ctx.fill(); ctx.strokeStyle = hexA(col, .5); ctx.lineWidth = 1.2; ctx.stroke(); };
+    band(g.cb[0], g.cb[1], '#3c8cff', .22); band(g.vb[0], g.vb[1], '#a970ff', .25);
+    ctx.fillStyle = 'rgba(255,255,255,.025)'; ctx.fillRect(g.L, g.cb[1], g.W, g.vb[0] - g.cb[1]);
+    ctx.setLineDash([6, 6]); ctx.strokeStyle = 'rgba(255,255,255,.18)'; [g.cb[1], g.vb[0]].forEach(y => { ctx.beginPath(); ctx.moveTo(g.L, y); ctx.lineTo(g.R, y); ctx.stroke(); }); ctx.setLineDash([]);
+    txt(ctx, 'Зона проводимости', g.L + 16, g.cb[0] + 16, { c: '#9fd0ff', s: 13 }); txt(ctx, 'Валентная зона', g.L + 16, g.vb[1] + 16, { c: '#cdb4ff', s: 13 });
+    const gm = (g.cb[1] + g.vb[0]) / 2; txt(ctx, 'Запрещённая зона', g.L + g.W / 2, gm, { a: 'center', c: 'rgba(255,255,255,.45)', s: 14 });
+    // ось энергии и Eg
+    arrow(ctx, 40, g.vb[1] + 10, 40, g.cb[0] - 14, 'rgba(255,255,255,.5)', 1.5, 8); txt(ctx, 'E', 52, g.cb[0] - 10, { c: 'rgba(255,255,255,.6)' });
+    arrow(ctx, 70, gm, 70, g.cb[1] + 2, C.sun, 2, 8); arrow(ctx, 70, gm, 70, g.vb[0] - 2, C.sun, 2, 8);
+    ctx.save(); ctx.translate(58, gm); ctx.rotate(-Math.PI / 2); txt(ctx, `Eg ≈ ${fmt(Eg, 2)} эВ`, 0, 0, { a: 'center', c: C.sun, s: 12.5, w: 700 }); ctx.restore();
+    // прыжки дырок (дырка «движется», когда соседний электрон занимает её место)
+    this.hopT -= dt; if (this.hopT < 0) { this.hopT = .35; const hs = this.slots.map((v, i) => !v ? i : -1).filter(i => i >= 0 && !this.fx.some(f => (f.k === 'fall' || f.k === 'ph') && f.i === i)); if (hs.length) { const a = hs[Math.floor(rnd(0, hs.length))]; const c = a % this.cols, r = Math.floor(a / this.cols); const nb = [[c - 1, r], [c + 1, r], [c, r - 1], [c, r + 1]].filter(([x, y]) => x >= 0 && y >= 0 && x < this.cols && y < this.rows).map(([x, y]) => y * this.cols + x).filter(i => this.slots[i] && !this.fx.some(f => f.i === i)); if (nb.length) { const b = nb[Math.floor(rnd(0, nb.length))]; this.slots[a] = 1; this.slots[b] = 0; this.moves.push({ from: b, to: a, t: 0 }); } } }
+    for (const m of this.moves) m.t += dt * 4; this.moves = this.moves.filter(m => m.t < 1);
+    // электроны и дырки ВЗ
+    for (let i = 0; i < this.slots.length; i++) {
+      const [x, y] = this.slotPos(i); const mv = this.moves.find(m => m.to === i);
+      if (this.slots[i]) { if (mv) { const [fx, fy] = this.slotPos(mv.from); electron(ctx, lerp(fx, x, ease(mv.t)), lerp(fy, y, ease(mv.t)), 6); } else electron(ctx, x + Math.sin(t * 2 + i) * 1.2, y, 6); }
+      else hole(ctx, x, y, 7);
+    }
+    // свободные электроны в ЗП
+    for (const e of this.free) { e.vx += rnd(-1, 1) * 200 * dt; e.vy += rnd(-1, 1) * 200 * dt; e.vx *= .96; e.vy *= .96; e.x += e.vx * dt; e.y += e.vy * dt; if (e.x < g.L + 8 || e.x > g.R - 8) e.vx *= -1; if (e.y < g.cb[0] + 8 || e.y > g.cb[1] - 8) e.vy *= -1; e.x = clamp(e.x, g.L + 8, g.R - 8); e.y = clamp(e.y, g.cb[0] + 8, g.cb[1] - 8); electron(ctx, e.x, e.y, 7); }
+    // эффекты
+    for (const f of this.fx) {
+      f.t += dt * (f.k === 'flash' ? 1.6 : 1.5);
+      if (f.k === 'ph') { const p = ease(Math.min(1, f.t)); const x = lerp(f.x0, f.x1, p), y = lerp(f.y0, f.y1, p); photonWave(ctx, lerp(f.x0, f.x1, Math.max(0, p - .25)), lerp(f.y0, f.y1, Math.max(0, p - .25)), x, y, C.sun, 9, 6, 2.4); glow(ctx, x, y, 16, C.sun, .9); if (f.t >= 1) { f.done = 1; this.excite(f.i); } }
+      else if (f.k === 'jump') { const p = easeIO(Math.min(1, f.t)); const x = lerp(f.x0, f.x1, p), y = lerp(f.y0, f.y1, p) - Math.sin(p * Math.PI) * 30; ctx.strokeStyle = hexA(C.el, .35 * (1 - p)); ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.moveTo(f.x0, f.y0); ctx.lineTo(x, y); ctx.stroke(); ctx.setLineDash([]); electron(ctx, x, y, 7); if (f.t >= 1) { f.done = 1; this.free.push({ x, y, vx: rnd(-40, 40), vy: rnd(-20, 20) }); } }
+      else if (f.k === 'fall') { const p = easeIO(Math.min(1, f.t)); electron(ctx, lerp(f.x0, f.x1, p), lerp(f.y0, f.y1, p), 7); if (f.t >= 1) { f.done = 1; this.slots[f.i] = 1; this.fx.push({ k: 'flash', x: f.x1, y: f.y1, t: 0, c: C.hole }); this.fx.push({ k: 'emit', x: f.x1, y: f.y1, t: 0 }); Snd.thud(); } }
+      else if (f.k === 'flash') { glow(ctx, f.x, f.y, 10 + f.t * 50, f.c, Math.max(0, .9 - f.t)); if (f.t > 1) f.done = 1; }
+      else if (f.k === 'emit') { const d = f.t * 140; photonWave(ctx, f.x + d * .6, f.y - d * .3, f.x + d * .6 + 50, f.y - d * .3 - 25, '#ff7a3c', 7, 4, 2, Math.max(0, 1 - f.t)); txt(ctx, 'энергия → тепло/свет', f.x + 14, f.y + 22, { s: 11, c: '#ffb08a', alpha: Math.max(0, 1 - f.t) }); if (f.t > 1) f.done = 1; }
+    }
+    this.fx = this.fx.filter(f => !f.done);
+    const nh = this.slots.filter(v => !v).length; this.cN.set(this.free.length + this.fx.filter(f => f.k === 'jump').length); this.cP.set(nh);
+    if (T === 0 && nh === 0 && !this.fx.length) { ctx.globalAlpha = .7 + .3 * Math.sin(t * 2); txt(ctx, '🔒 T = 0 K: электроны «заперты» в валентной зоне — ток невозможен', g.L + g.W / 2, g.vb[0] - 22, { a: 'center', s: 13.5, c: '#cfe6ff' }); ctx.globalAlpha = 1; }
+  }
+});
+
+/* =====================================================================
+   СЦЕНА 4 — Дырка — квазичастица: аналогия с кинотеатром
+   ===================================================================== */
+SCENES.push({
+  title: 'Дырка-квазичастица',
+  notes: `<p>Дырка — это <b>квазичастица</b>: в реальности её материально не существует, её ввели учёные для удобства описания. По знаку заряда она положительна.</p><p>Дырка может перемещаться так же, как перемещаются электроны. Можно провести <b>аналогию с кинотеатром</b>, где все места заняты, кроме одного. Человек пересядет на свободное место, а то место, на котором он сидел, освободится — и так будет продолжаться до бесконечности.</p><p>Люди (электроны) пересаживаются в одну сторону, а «свободное место» (дырка) движется в противоположную — как положительный заряд.</p>`,
+  fix: 'Исправлено: «к вазе частица» → квазичастица. Аналогия с кинотеатром в рассказе звучит в разделе о легировании; здесь вынесена на отдельный экран по структуре презентации.',
+  init() {
+    const s = shell(this, { kicker: '04 · Квазичастица', title: '<span class="h-t">Дырка</span> — свободное место, которое движется', lead: 'Дырку ввели для удобства: материально её нет, но ведёт она себя как <b>частица с зарядом +e</b>. Представьте кинотеатр, где все места заняты, кроме одного.', pts: ['e|Зритель пересаживается на свободное место ←', 'h|Свободное место «переезжает» в обратную сторону →', '|И так — до бесконечности: дырка дрейфует по кристаллу'] });
+    this.cv = Cv(s.visual); this.speed = 2; this.run = false; this.asE = false;
+    const r = el('div', 'row'); s.controls.appendChild(r);
+    this.bRun = UI.button(r, { text: '▶ Запустить', kind: 'pri', onClick: () => { this.run = !this.run; this.bRun.textContent = this.run ? '❚❚ Пауза' : '▶ Запустить'; } });
+    UI.button(r, { text: 'Сброс', onClick: () => this.reset() });
+    UI.slider(s.controls, { label: 'Скорость пересадок', min: .5, max: 8, step: .5, value: 2, unit: ' /с', onChange: v => this.speed = v });
+    UI.toggle(s.controls, { label: 'Показать как электроны и дырку', value: false, blue: true, onChange: v => this.asE = v });
+    const hd = hud(s.visual, 'tr'); this.cM = Counter(stat(hd, 'Пересадок', 'sun'), v => fmt(v));
+    caption(s.visual, '<b>Аналогия:</b> зрители = электроны, свободное кресло = дырка');
+    this.R = 5; this.Cn = 11; this.reset();
+  },
+  reset() { this.order = []; for (let r = 0; r < this.R; r++) for (let c = 0; c < this.Cn; c++) this.order.push([r % 2 ? this.Cn - 1 - c : c, r]); this.k = 0; this.acc = 0; this.mv = null; this.moves = 0; this.cM && this.cM.set(0, true); this.trail = []; },
+  enter() { this.cv.resize(); }, leave() { },
+  seat(c, r) { const { w, h } = this.cv; const sx = w * .1, sw = w * .8, sy = h * .3, sh = h * .58; const dx = sw / (this.Cn - 1); const y = sy + r * sh / (this.R - 1); const curve = Math.pow((c - (this.Cn - 1) / 2) / ((this.Cn - 1) / 2), 2) * 12; return [sx + c * dx, y - curve]; },
+  update(dt, t) {
+    const cv = this.cv; if (cv.w < 2) cv.resize(); const { ctx, w, h } = cv; cv.clear();
+    // экран
+    ctx.save(); const sg = ctx.createLinearGradient(0, h * .06, 0, h * .16); sg.addColorStop(0, 'rgba(180,210,255,.9)'); sg.addColorStop(1, 'rgba(120,160,255,.1)'); ctx.strokeStyle = 'rgba(200,225,255,.9)'; ctx.lineWidth = 4; ctx.shadowColor = '#9cc8ff'; ctx.shadowBlur = 30; ctx.beginPath(); ctx.moveTo(w * .14, h * .1); ctx.quadraticCurveTo(w / 2, h * .05, w * .86, h * .1); ctx.stroke(); ctx.restore();
+    ctx.fillStyle = 'rgba(150,190,255,.05)'; ctx.beginPath(); ctx.moveTo(w * .14, h * .1); ctx.lineTo(w * .02, h * .95); ctx.lineTo(w * .98, h * .95); ctx.lineTo(w * .86, h * .1); ctx.fill();
+    txt(ctx, 'ЭКРАН', w / 2, h * .13, { a: 'center', c: 'rgba(200,225,255,.6)', s: 12, w: 700 });
+    // шаг
+    if (this.run) { this.acc += dt * this.speed; if (!this.mv && this.acc >= 1) { this.acc = 0; const nk = (this.k + 1) % this.order.length; this.mv = { from: this.order[nk], to: this.order[this.k], nk, t: 0 }; } }
+    if (this.mv) { this.mv.t += dt * Math.max(2, this.speed * 1.4); if (this.mv.t >= 1) { this.trail.push({ p: this.seat(...this.order[this.k]), t: 1 }); this.k = this.mv.nk; this.mv = null; this.moves++; this.cM.set(this.moves); Snd.click(); } }
+    const hole = this.order[this.k];
+    for (const tr of this.trail) { tr.t -= dt * .6; glow(ctx, tr.p[0], tr.p[1], 22, C.hole, Math.max(0, tr.t) * .25); } this.trail = this.trail.filter(x => x.t > 0);
+    for (let r = 0; r < this.R; r++) for (let c = 0; c < this.Cn; c++) {
+      const [x, y] = this.seat(c, r); const isHole = hole[0] === c && hole[1] === r; const isFrom = this.mv && this.mv.from[0] === c && this.mv.from[1] === r;
+      ctx.fillStyle = 'rgba(120,130,190,.22)'; rr(ctx, x - 16, y - 4, 32, 22, 7); ctx.fill(); ctx.fillStyle = 'rgba(120,130,190,.35)'; rr(ctx, x - 18, y + 14, 36, 6, 3); ctx.fill();
+      if (isHole && !this.mv) { ctx.globalAlpha = .6 + .4 * Math.sin(t * 4); this.asE ? hole_(ctx, x, y + 2) : seatGlow(ctx, x, y); ctx.globalAlpha = 1; continue; }
+      if (isHole && this.mv) { const p = easeIO(this.mv.t); const [fx, fy] = this.seat(...this.mv.from); const px = lerp(fx, x, p), py = lerp(fy, y, p) - Math.sin(p * Math.PI) * 26; seatGlow(ctx, fx, fy, p); this.person(ctx, px, py, true); continue; }
+      if (isFrom) continue;
+      this.person(ctx, x, y + Math.sin(t * 1.5 + c + r * 3) * .8, false);
+    }
+    // стрелки направлений
+    const dir = hole[1] % 2 ? -1 : 1; const ay = h * .22;
+    arrow(ctx, w / 2 - dir * 20, ay, w / 2 - dir * 120, ay, C.el, 3, 11); txt(ctx, this.asE ? 'электроны' : 'зрители', w / 2 - dir * 70, ay - 14, { a: 'center', c: C.el, s: 12.5 });
+    arrow(ctx, w / 2 + dir * 20, ay, w / 2 + dir * 120, ay, C.hole, 3, 11); txt(ctx, this.asE ? 'дырка (+)' : 'свободное место', w / 2 + dir * 70, ay - 14, { a: 'center', c: C.hole, s: 12.5 });
+    function seatGlow(ctx, x, y, a = 1) { glow(ctx, x, y + 6, 36, C.hole, .55 * a); ctx.strokeStyle = hexA(C.hole, .9 * a); ctx.lineWidth = 2; rr(ctx, x - 16, y - 4, 32, 22, 7); ctx.stroke(); }
+    function hole_(ctx, x, y) { seatGlow(ctx, x, y - 2); window.hole(ctx, x, y + 4, 10); }
+  },
+  person(ctx, x, y, moving) {
+    if (this.asE) { electron(ctx, x, y + 4, moving ? 10 : 9); return; }
+    const g = ctx.createLinearGradient(x, y - 30, x, y + 10); g.addColorStop(0, moving ? '#c9f1ff' : '#8fd8ff'); g.addColorStop(1, '#1f6fd6');
+    if (moving) glow(ctx, x, y - 10, 40, C.el, .5);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y - 18, 8, 0, TAU); ctx.fill(); rr(ctx, x - 12, y - 8, 24, 20, 9); ctx.fill();
+  }
+});
+</script>
+<script>
+/* =====================================================================
+   СЦЕНА 5 — Легирование: n-тип (фосфор) и p-тип (бор), рис. 2
+   ===================================================================== */
+SCENES.push({
+  title: 'Легирование',
+  notes: `<p>Что используют для более эффективной работы полупроводников? Есть такой процесс — <b>легирование</b>: в кристалл добавляют примеси других веществ, чтобы улучшить его электрические свойства.</p><p>Есть два типа полупроводников — <b>n- и p-типа</b>. Для полупроводника n-типа используется легирование <b>фосфором</b>. Фосфор пятивалентен: если в решётке на место атома кремния поставить фосфор, у него останется <b>лишний свободный электрон</b>. Если разместить в солнечном элементе некоторое количество атомов фосфора, можно получить большое количество лишних электронов.</p><p>То же самое, но наоборот, происходит в полупроводнике p-типа: для него используется легирование <b>бором</b>. Бор трёхвалентен, поэтому на его месте остаётся <b>лишняя дырка</b>. Эта дырка может перемещаться так же, как перемещаются электроны (вспомним аналогию с кинотеатром).</p><p><b>Рисунок 2</b> — примеси фосфора и бора в кристаллической решётке кремния.</p><p>Подводя итог: легирование позволяет создать рядом две области с разными основными носителями. В n-области основные носители — электроны, в p-области — дырки.</p>`,
+  fix: 'Исправлено: «лигирование», «мегирование» → легирование; «по проводнике п типа» → в полупроводнике p-типа; «Н/П тип» → n-/p-тип.',
+  init() {
+    const s = shell(this, { kicker: '05 · Рис. 2', title: '<span class="g">Легирование</span>: n-тип и p-тип', lead: 'В кристалл кремния добавляют <b>примеси</b>, чтобы управлять его электрическими свойствами и создать две области с разными <b>основными носителями</b>.', pts: ['e|<b>Фосфор P</b> — 5 валентных e⁻ → лишний электрон → <b>n-тип</b>', 'h|<b>Бор B</b> — 3 валентных e⁻ → лишняя дырка → <b>p-тип</b>', '|Больше примеси → больше свободных носителей'] });
+    this.cv = Cv(s.visual); this.type = 'n'; this.conc = 40;
+    this.seg = UI.seg(s.controls, { label: 'Примесь', options: [{ v: 'n', t: 'Фосфор P → n-тип' }, { v: 'p', t: 'Бор B → p-тип' }], value: 'n', onChange: v => { this.type = v; this.build(); } });
+    UI.slider(s.controls, { label: 'Концентрация примеси', min: 0, max: 100, step: 1, value: this.conc, fmt: v => `N = ${v ? sci(Math.pow(10, 14 + v / 25), 0) : '0'} см⁻³`, onChange: v => { this.conc = v; this.build(); } });
+    s.controls.appendChild(el('div', 'legend', `<span><i style="background:#9fb4e0"></i>Si</span><span><i style="background:${C.sun}"></i>P (донор)</span><span><i style="background:${C.ok}"></i>B (акцептор)</span><span><i style="background:${C.el}"></i>e⁻</span><span><i style="border:2px solid ${C.hole}"></i>дырка</span>`));
+    const hd = hud(s.visual, 'tr'); this.cK = Counter(stat(hd, 'Атомов примеси', 'sun'), v => fmt(v)); this.cC = Counter(stat(hd, 'Свободных носителей', 'el'), v => fmt(v)); this.lblT = stat(hd, 'Тип', 'fi');
+    this.capE = caption(s.visual, '<b>Рис. 2.</b> Примеси фосфора и бора в кристаллической решётке кремния');
+    this.Cn = 9; this.Rn = 6; const cand = []; for (let r = 1; r < this.Rn - 1; r++) for (let c = 1; c < this.Cn - 1; c++) cand.push(r * this.Cn + c);
+    this.order = [12, 33, 24, 41, 15, 30, 21, 38].filter(i => cand.includes(i)).concat(cand.sort(() => Math.random() - .5)).filter((v, i, a) => a.indexOf(v) === i);
+    this.bonds = []; for (let r = 0; r < this.Rn; r++) for (let c = 0; c < this.Cn; c++) { const i = r * this.Cn + c; if (c < this.Cn - 1) this.bonds.push([i, i + 1]); if (r < this.Rn - 1) this.bonds.push([i, i + this.Cn]); }
+    this.build();
+  },
+  P(i) { const { w, h } = this.cv; const sp = Math.min((w - 60) / (this.Cn - 1 + .6), (h - 190) / (this.Rn - 1 + .4)); const ox = w / 2 - sp * (this.Cn - 1) / 2, oy = 70 + sp * .3; return [ox + (i % this.Cn) * sp, oy + Math.floor(i / this.Cn) * sp, sp]; },
+  build() {
+    const k = Math.round(this.conc / 100 * 8); this.dop = this.order.slice(0, k); this.free = []; this.holes = [];
+    this.dop.forEach((d, j) => {
+      if (this.type === 'n') this.free.push({ d, x: null, y: null, vx: 0, vy: 0, t: -j * .25, home: 1 });
+      else { const bi = this.bonds.findIndex(b => b[0] === d || b[1] === d); this.holes.push({ b: bi, prev: bi, t: 1, d, wait: rnd(.3, 1) + j * .2 }); }
+    });
+    if (this.cK) { this.cK.set(k); this.cC.set(k); this.lblT.textContent = k ? (this.type === 'n' ? 'n-тип' : 'p-тип') : 'чистый Si'; }
+  },
+  enter() { this.cv.resize(); setTimeout(() => SEGS.forEach(f => f()), 50); }, leave() { },
+  update(dt, t) {
+    const cv = this.cv; if (cv.w < 2) cv.resize(); const { ctx, w, h } = cv; cv.clear(); const sp = this.P(0)[2], ar = sp * .2;
+    const holeBonds = new Map(); for (const ho of this.holes) holeBonds.set(ho.b, ho);
+    // связи
+    this.bonds.forEach((b, bi) => {
+      const [x0, y0] = this.P(b[0]), [x1, y1] = this.P(b[1]); const hz = y0 === y1; const off = sp * .055;
+      ctx.strokeStyle = 'rgba(169,112,255,.45)'; ctx.lineWidth = 1.8; for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x0 + (hz ? 0 : off * s), y0 + (hz ? off * s : 0)); ctx.lineTo(x1 + (hz ? 0 : off * s), y1 + (hz ? off * s : 0)); ctx.stroke(); }
+      const ho = holeBonds.get(bi);
+      [.36, .64].forEach((k, j) => { const x = lerp(x0, x1, k), y = lerp(y0, y1, k); if (ho && j === 1) return; electron(ctx, x, y, 4.6, 1, false); });
+    });
+    // дырки (лишние дырки бора) — перескакивают по связям
+    for (const ho of this.holes) {
+      ho.wait -= dt; if (ho.t < 1) ho.t = Math.min(1, ho.t + dt * 2.5);
+      if (ho.wait < 0 && ho.t >= 1) { const [a, b] = this.bonds[ho.b]; const nb = this.bonds.map((x, i) => i).filter(i => i !== ho.b && (this.bonds[i].includes(a) || this.bonds[i].includes(b)) && !this.holes.some(o => o.b === i)); if (nb.length) { ho.prev = ho.b; ho.b = nb[Math.floor(rnd(0, nb.length))]; ho.t = 0; } ho.wait = rnd(.5, 1.2); }
+      const pos = bi => { const [x0, y0] = this.P(this.bonds[bi][0]), [x1, y1] = this.P(this.bonds[bi][1]); return [lerp(x0, x1, .64), lerp(y0, y1, .64)]; };
+      const [px, py] = pos(ho.prev), [qx, qy] = pos(ho.b), e = ease(ho.t); hole(ctx, lerp(px, qx, e), lerp(py, qy, e), 7.5);
+    }
+    // атомы
+    for (let i = 0; i < this.Cn * this.Rn; i++) {
+      const [x, y] = this.P(i); const isD = this.dop.includes(i); const col = !isD ? '#9fb4e0' : this.type === 'n' ? C.sun : C.ok;
+      glow(ctx, x, y, ar * 2.3, col, isD ? .55 : .2); const g = ctx.createRadialGradient(x - ar * .3, y - ar * .3, 0, x, y, ar * (isD ? 1.15 : 1)); g.addColorStop(0, '#ffffff'); g.addColorStop(1, isD ? col : '#5c6fa6'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, ar * (isD ? 1.15 : 1), 0, TAU); ctx.fill();
+      txt(ctx, isD ? (this.type === 'n' ? 'P' : 'B') : 'Si', x, y, { a: 'center', s: Math.max(9, ar * .68), w: 800, c: '#0b1430' });
+      if (isD) { const away = this.type === 'n' ? (this.free.find(f => f.d === i) || {}).home === 0 : !this.holes.some(o => this.bonds[o.b].includes(i) && o.d === i && o.b === o.prev && o.t >= 1 && false); if (this.type === 'n' && away || this.type === 'p') { txt(ctx, this.type === 'n' ? '+' : '−', x + ar * 1.05, y - ar * 1.05, { a: 'center', s: 15, w: 800, c: this.type === 'n' ? C.sun : C.ok }); } }
+    }
+    // лишние электроны фосфора — сначала «на орбите», затем свободны
+    for (const f of this.free) {
+      const [dx, dy] = this.P(f.d); f.t += dt;
+      if (f.home) { const a = t * 3 + f.d; f.x = dx + Math.cos(a) * ar * 1.9; f.y = dy + Math.sin(a) * ar * 1.9; ctx.strokeStyle = hexA(C.el, .3); ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.arc(dx, dy, ar * 1.9, 0, TAU); ctx.stroke(); ctx.setLineDash([]); if (f.t > 1.4) { f.home = 0; f.vx = Math.cos(a) * 60; f.vy = Math.sin(a) * 60; } }
+      else { f.vx += rnd(-1, 1) * 260 * dt; f.vy += rnd(-1, 1) * 260 * dt; f.vx *= .97; f.vy *= .97; f.x += f.vx * dt; f.y += f.vy * dt; const [x0, y0] = this.P(0), [x1, y1] = this.P(this.Cn * this.Rn - 1); if (f.x < x0 || f.x > x1) f.vx *= -1; if (f.y < y0 || f.y > y1) f.vy *= -1; f.x = clamp(f.x, x0, x1); f.y = clamp(f.y, y0, y1); }
+      electron(ctx, f.x, f.y, 7.5);
+    }
+    const [, yb] = this.P(this.Cn * this.Rn - 1);
+    const msg = !this.dop.length ? 'Чистый кремний: все 4 электрона каждого атома заняты в связях' : this.type === 'n' ? 'P: 4 электрона в связях + 1 лишний → свободный электрон, донор становится ионом P⁺' : 'B: только 3 электрона → одна связь неполная → дырка; акцептор становится ионом B⁻';
+    txt(ctx, msg, w / 2, Math.min(h - 74, yb + sp * .62), { a: 'center', s: 13, c: 'rgba(235,240,255,.85)' });
+  }
+});
+
+/* =====================================================================
+   СЦЕНА 6 — p-n-переход: диффузия, обеднённый слой, поле (рис. 3)
+   ===================================================================== */
+SCENES.push({
+  title: 'p-n-переход',
+  notes: `<p>Если соединить эти два типа кремния — n и p, — возникает такое явление, как <b>диффузия</b>: движение носителей из области с большей концентрацией в область с меньшей.</p><p>Электроны покидают приграничную часть n-области и оставляют там <b>положительно заряженные ионы донорной примеси</b>. Из приграничной части p-области уходят дырки — там остаются <b>отрицательные ионы акцепторов</b>.</p><p>В этой приграничной зоне образуется <b>обеднённый слой</b> — область с малым количеством свободных носителей, — и возникает <b>электростатическое поле, направленное от n- к p-области</b>.</p><p><b>Рисунок 3</b> — обеднённый слой и направление внутреннего электрического поля p-n-перехода.</p><p>Поле действует на электроны в сторону n-области, а на дырки — в сторону p-области. Оно препятствует дальнейшей диффузии основных носителей. В темноте устанавливается <b>равновесие</b>: движение за счёт диффузии компенсируется движением за счёт электрического поля (дрейфом).</p><p>При освещении поле помогает <b>разделять вновь возникшие электронно-дырочные пары</b>. Но само электрическое поле <b>не служит источником энергии</b> — энергию приносит солнечный свет.</p>`,
+  fix: 'Исправлено: «объединённый слой» → обеднённый слой; «ионы донор най примеси» → ионы донорной примеси; «поле направленное тн к П» → от n к p.',
+  init() {
+    const s = shell(this, { kicker: '06 · Рис. 3', title: '<span class="f-t">p-n-переход</span> и внутреннее поле', lead: 'Соединяем n- и p-области. Начинается <b>диффузия</b> — движение носителей из области с большей концентрацией в область с меньшей.', pts: ['e|Электроны уходят из n → остаются <b>ионы доноров (+)</b>', 'h|Дырки уходят из p → остаются <b>ионы акцепторов (−)</b>', 'f|Возникает <b>обеднённый слой</b> и поле <b>E⃗ от n к p</b>: тянет e⁻ в n, дырки в p'] });
+    this.cv = Cv(s.visual); this.joined = false; this.jT = 0; this.tj = 0; this.light = false;
+    const r = el('div', 'row'); s.controls.appendChild(r);
+    this.bJ = UI.button(r, { text: '⟷ Соединить n и p', kind: 'pri', onClick: () => { this.joined ? this.reset() : (this.joined = true, Snd.thud()); this.bJ.textContent = this.joined ? '↺ Разъединить' : '⟷ Соединить n и p'; } });
+    this.sg = UI.seg(s.controls, { label: 'Освещение', options: [{ v: 0, t: '🌑 Темнота' }, { v: 1, t: '☀️ Свет' }], value: 0, onChange: v => { this.light = !!v; if (v && !this.joined) toast('Сначала соедините n и p'); } });
+    s.controls.appendChild(el('div', 'callout', '⚡ <b>Поле — не источник энергии.</b> Оно лишь разделяет пары. Энергию приносит <b class="s-t">свет</b>.'));
+    const hd = hud(s.visual, 'tr'); this.cW = Counter(stat(hd, 'Обеднённый слой', 'fi', '%'), v => fmt(v)); this.cS = Counter(stat(hd, 'Разделено пар', 'sun'), v => fmt(v)); this.cSt = stat(hd, 'Состояние', '');
+    caption(s.visual, '<b>Рис. 3.</b> Обеднённый слой и направление внутреннего электрического поля p-n-перехода');
+    this.reset();
+  },
+  geo() { const { w, h } = this.cv; const x0 = w * .05, x1 = w * .95, y0 = h * .2, y1 = h * .78; return { x0, x1, y0, y1, J: (x0 + x1) / 2, Wm: (x1 - x0) * .11 }; },
+  reset() {
+    this.joined = false; this.light = false; this.sg && this.sg.set(0, true); this.bJ && (this.bJ.textContent = '⟷ Соединить n и p'); this.jT = 0; this.tj = 0; this.e = []; this.hs = []; this.fx = []; this.sep = 0; this.ph = [];
+    const g = this.geo(); for (let i = 0; i < 70; i++) { this.e.push({ x: rnd(g.x0 + 10, g.J - 46), y: rnd(g.y0 + 8, g.y1 - 8), vx: 0, vy: 0 }); this.hs.push({ x: rnd(g.J + 46, g.x1 - 10), y: rnd(g.y0 + 8, g.y1 - 8), vx: 0, vy: 0 }); }
+    this.cS && this.cS.set(0, true);
+  },
+  enter() { this.cv.resize(); if (!this.joined) this.reset(); setTimeout(() => SEGS.forEach(f => f()), 50); }, leave() { },
+  update(dt, t) {
+    const cv = this.cv; if (cv.w < 2) cv.resize(); const { ctx, w, h } = cv; cv.clear(); const g = this.geo();
+    if (this.joined) { this.jT = Math.min(1, this.jT + dt * 1.6); if (this.jT >= 1) this.tj += dt; }
+    const gap = 40 * (1 - easeIO(this.jT)); const W = this.jT >= 1 ? g.Wm * (1 - Math.exp(-this.tj / 1.4)) : 0; const eq = W > g.Wm * .96;
+    this.cW.set(W / g.Wm * 100); this.cSt.textContent = !this.joined ? 'раздельно' : !eq ? 'диффузия…' : this.light ? 'свет: разделение пар' : 'равновесие';
+    // блоки
+    const blk = (xa, xb, col, lab) => { const gr = ctx.createLinearGradient(xa, 0, xb, 0); gr.addColorStop(0, hexA(col, .16)); gr.addColorStop(1, hexA(col, .07)); ctx.fillStyle = gr; rr(ctx, xa, g.y0, xb - xa, g.y1 - g.y0, 16); ctx.fill(); ctx.strokeStyle = hexA(col, .4); ctx.lineWidth = 1.2; ctx.stroke(); txt(ctx, lab, (xa + xb) / 2, g.y0 - 18, { a: 'center', s: 15, w: 700, c: col }); };
+    blk(g.x0, g.J - gap, C.el, 'n-область (фосфор)'); blk(g.J + gap, g.x1, C.hole, 'p-область (бор)');
+    // ионы (неподвижные)
+    for (let x = g.x0 + 20; x < g.x1 - 10; x += 34) for (let y = g.y0 + 22; y < g.y1 - 10; y += 34) {
+      const n = x < g.J; const xx = x + (n ? -gap : gap); const inD = this.joined && Math.abs(x - g.J) < W; const a = inD ? 1 : .18;
+      ctx.globalAlpha = a; ctx.strokeStyle = n ? C.sun : C.ok; ctx.lineWidth = 1.5; rr(ctx, xx - 7, y - 7, 14, 14, 3); ctx.stroke(); if (inD) { ctx.fillStyle = hexA(n ? C.sun : C.ok, .18); ctx.fill(); }
+      txt(ctx, n ? '+' : '−', xx, y + .5, { a: 'center', s: 13, w: 800, c: n ? C.sun : C.ok, alpha: a }); ctx.globalAlpha = 1;
+    }
+    // обеднённый слой и поле
+    if (W > 1) {
+      ctx.fillStyle = hexA(C.field, .1 + .05 * Math.sin(t * 2)); ctx.fillRect(g.J - W, g.y0, 2 * W, g.y1 - g.y0); ctx.strokeStyle = hexA(C.field, .55); ctx.setLineDash([5, 5]); [g.J - W, g.J + W].forEach(x => { ctx.beginPath(); ctx.moveTo(x, g.y0); ctx.lineTo(x, g.y1); ctx.stroke(); }); ctx.setLineDash([]);
+      const fa = W / g.Wm; ctx.save(); ctx.shadowColor = C.field; ctx.shadowBlur = 12; ctx.globalAlpha = fa;
+      for (let k = 0; k < 5; k++) { const y = g.y0 + (k + .5) * (g.y1 - g.y0) / 5; const sh = ((t * 40) % 20) - 10; arrow(ctx, g.J - W + 6, y + sh * 0, g.J + W - 6, y, C.field, 2.4, 10); }
+      ctx.restore(); txt(ctx, 'E⃗  (от n к p)', g.J, g.y1 + 18, { a: 'center', c: C.field, s: 13.5, w: 700, alpha: fa }); txt(ctx, 'обеднённый слой', g.J, g.y0 - 40, { a: 'center', c: '#cdb4ff', s: 12, alpha: fa });
+    }
+    // контакты
+    ctx.fillStyle = 'rgba(200,210,230,.5)'; rr(ctx, g.x0 - 10, g.y0 + 10, 6, g.y1 - g.y0 - 20, 3); ctx.fill(); rr(ctx, g.x1 + 4, g.y0 + 10, 6, g.y1 - g.y0 - 20, 3); ctx.fill();
+    // фотоны и генерация пар
+    if (this.light && eq) { if (Math.random() < dt * 7) { const x = rnd(g.x0 + 20, g.x1 - 20); this.ph.push({ x, y: rnd(g.y0 + 15, g.y1 - 15), t: 0, inD: false }); } }
+    if (this.light) { for (let x = g.x0; x < g.x1; x += 60) glow(ctx, x + Math.sin(t + x) * 10, g.y0 - 50, 40, C.sun, .08); }
+    for (const p of this.ph) { p.t += dt * 3; const yy = lerp(-10, p.y, Math.min(1, p.t)); photonWave(ctx, p.x - 12, yy - 50, p.x, yy, C.sun, 8, 4, 2, .9); if (p.t >= 1) { p.done = 1; const inD = Math.abs(p.x - g.J) < W; this.e.push({ x: p.x, y: p.y, vx: inD ? -260 : 0, vy: 0, gen: 1, life: 0 }); this.hs.push({ x: p.x, y: p.y, vx: inD ? 260 : 0, vy: 0, gen: 1, life: 0 }); this.fx.push({ x: p.x, y: p.y, t: 0, c: C.sun }); if (Math.random() < .35) Snd.ding(1 + rnd(-.1, .1)); } }
+    this.ph = this.ph.filter(p => !p.done);
+    // движение носителей
+    const F = 1400, mv = (q, sgn) => { // sgn: -1 электрон, +1 дырка
+      if (q.exit) { q.x += q.vx * dt; q.done = sgn < 0 ? q.x < g.x0 - 5 : q.x > g.x1 + 5; return; }
+      if (q.cross) { const dx = q.mx - q.x, dy = q.my - q.y, d = Math.hypot(dx, dy); if (d < 4) { q.done = 1; return; } q.x += dx / d * 140 * dt; q.y += dy / d * 140 * dt; return; }
+      q.vx += rnd(-1, 1) * 420 * dt; q.vy += rnd(-1, 1) * 420 * dt; q.vx *= .95; q.vy *= .95;
+      const inD = this.joined && Math.abs(q.x - g.J) < W; if (inD) q.vx += sgn * F * dt;
+      q.x += q.vx * dt; q.y += q.vy * dt;
+      const lo = !this.joined ? (sgn < 0 ? g.x0 + 6 : g.J + gap + 6) : g.x0 + 6, hi = !this.joined ? (sgn < 0 ? g.J - gap - 6 : g.x1 - 6) : g.x1 - 6;
+      if (q.x < lo || q.x > hi) { q.vx *= -1; q.x = clamp(q.x, lo, hi); } if (q.y < g.y0 + 6 || q.y > g.y1 - 6) { q.vy *= -1; q.y = clamp(q.y, g.y0 + 6, g.y1 - 6); }
+    };
+    // формирование слоя: основные носители из приграничной зоны диффундируют и рекомбинируют
+    if (this.joined && !eq) {
+      for (const e of this.e) { if (e.cross || e.gen || e.x < g.J - W || e.x > g.J) continue; const hh = this.hs.filter(q => !q.cross && !q.gen && q.x > g.J && q.x < g.J + W + 30).sort((a, b) => a.x - b.x)[0]; if (!hh) continue; const my = (e.y + hh.y) / 2, mx = g.J + rnd(-6, 6); Object.assign(e, { cross: 1, mx, my }); Object.assign(hh, { cross: 1, mx, my }); this.fx.push({ x: mx, y: my, t: -.4, c: C.field }); }
+    }
+    this.e.forEach(q => mv(q, -1)); this.hs.forEach(q => mv(q, 1));
+    // в объёме сгенерированные пары постепенно рекомбинируют; избыток уходит к контактам
+    const base = this.e.filter(q => !q.gen).length;
+    if (this.light && eq) { const ex = this.e.filter(q => !q.exit).length - base; if (ex > 14) { const q = this.e.filter(q => !q.exit && q.x < g.J - W).sort((a, b) => a.x - b.x)[0]; if (q) { q.exit = 1; q.vx = -320; this.sep++; this.cS.set(this.sep); } } const exh = this.hs.filter(q => !q.exit).length - base; if (exh > 14) { const q = this.hs.filter(q => !q.exit && q.x > g.J + W).sort((a, b) => b.x - a.x)[0]; if (q) { q.exit = 1; q.vx = 320; } } }
+    if (!this.light) { const ge = this.e.filter(q => q.gen && !q.exit), gh = this.hs.filter(q => q.gen && !q.exit); if (ge.length && Math.random() < dt * 3) { ge[0].done = 1; if (gh[0]) gh[0].done = 1; } }
+    this.e = this.e.filter(q => !q.done); this.hs = this.hs.filter(q => !q.done);
+    for (const q of this.hs) hole(ctx, q.x, q.y, 6, q.exit ? .6 : 1); for (const q of this.e) electron(ctx, q.x, q.y, 6, q.exit ? .6 : 1);
+    for (const f of this.fx) { f.t += dt * 1.5; if (f.t > 0) glow(ctx, f.x, f.y, 8 + f.t * 40, f.c, Math.max(0, .8 - f.t)); } this.fx = this.fx.filter(f => f.t < 1);
+    if (eq && !this.light) txt(ctx, 'Темнота: диффузия ⇄ дрейф в поле — равновесие, тока нет', w / 2, g.y1 + 44, { a: 'center', s: 13, c: 'rgba(230,236,255,.75)' });
+    if (eq && this.light) txt(ctx, 'Свет: поле разделяет новые пары — e⁻ → n, дырки → p (к контактам)', w / 2, g.y1 + 44, { a: 'center', s: 13, c: '#ffe0a0' });
+    if (this.light && eq) { txt(ctx, '−', g.x0 - 7, g.y0 - 2, { a: 'center', s: 18, w: 800, c: C.el }); txt(ctx, '+', g.x1 + 7, g.y0 - 2, { a: 'center', s: 18, w: 800, c: C.hole }); }
+  }
+});
+
+/* =====================================================================
+   СЦЕНА 7 — Внутренний фотоэффект (рис. 4)
+   ===================================================================== */
+SCENES.push({
+  title: 'Внутренний фотоэффект',
+  notes: `<p><b>Внутренний фотоэффект.</b> Энергия фотона света не фиксированная — она может быть разной: она определяется <b>длиной волны</b> (цветом) света, E = hc/λ ≈ 1240/λ[нм] эВ. Угол падения солнечных лучей на панель влияет не на энергию отдельного фотона, а на то, <b>сколько фотонов</b> приходится на единицу площади. Поэтому не каждый фотон может образовать электронно-дырочную пару.</p><p>Когда кремний поглощает фотон подходящей энергии (E ≥ 1,12 эВ), электрон может перейти из валентной зоны в зону проводимости, как мы говорили ранее. В валентной зоне при этом остаётся дырка — возникает <b>электронно-дырочная пара</b>. Это и есть проявление внутреннего фотоэффекта.</p><p>При внутреннем фотоэффекте электрон <b>не вылетает из материала</b> — в отличие от внешнего фотоэффекта.</p><p><b>Рисунок 4</b> — поглощение фотона и образование электронно-дырочной пары.</p>`,
+  fix: 'Исправлено по физике: энергия фотона зависит от длины волны, а не от угла падения; угол влияет на интенсивность (число фотонов на единицу площади ∝ cos θ).',
+  init() {
+    const s = shell(this, { kicker: '07 · Рис. 4', title: '<span class="g">Внутренний</span> фотоэффект', lead: 'Энергия фотона зависит от <b>длины волны</b>: <span class="s-t">E = 1240 / λ[нм] эВ</span>. Если E ≥ E<sub>g</sub> = 1,12 эВ — фотон поглощается и рождает пару. Если меньше — проходит насквозь.', pts: ['e|Электрон остаётся <b>внутри</b> материала и переходит в зону проводимости', '|Угол падения меняет <b>число фотонов на 1 см²</b> (∝ cos θ), но не энергию фотона', 'h|Внешний фотоэффект: электрон <b>вылетает</b> из материала'] });
+    this.cv = Cv(s.visual); this.lam = 620; this.ang = 0; this.cmp = false; this.ph = []; this.pairs = []; this.acc = 0; this.ext = []; this.jump = 0;
+    this.sl = UI.slider(s.controls, { label: 'Длина волны λ', min: 250, max: 1400, step: 5, value: this.lam, fmt: v => `${v} нм · ${fmt(1240 / v, 2)} эВ`, onChange: v => { this.lam = v; this.col(); } });
+    UI.slider(s.controls, { label: 'Угол падения θ', min: 0, max: 80, step: 1, value: 0, unit: '°', c1: '#7a60ff', c2: '#c9b2ff', onChange: v => this.ang = v });
+    UI.toggle(s.controls, { label: 'Сравнить с внешним фотоэффектом', value: false, onChange: v => this.cmp = v });
+    const hd = hud(s.visual, 'tr'); this.cE = Counter(stat(hd, 'Энергия фотона', 'sun', 'эВ'), v => fmt(v, 2)); this.cF = Counter(stat(hd, 'Фотонов на 1 см²', 'fi', '%'), v => fmt(v)); this.cR = stat(hd, 'Результат', '');
+    caption(s.visual, '<b>Рис. 4.</b> Поглощение фотона и образование электронно-дырочной пары');
+    this.col();
+  },
+  col() { const c = wl2rgb(this.lam); this.c = c; this.sl.el.querySelector('.slider').style.setProperty('--c2', c); this.sl.el.querySelector('.slider').style.setProperty('--c1', c); },
+  enter() { this.cv.resize(); }, leave() { },
+  update(dt, t) {
+    const cv = this.cv; if (cv.w < 2) cv.resize(); const { ctx, w, h } = cv; cv.clear();
+    const E = 1240 / this.lam, Eg = 1.12, ok = E >= Eg, th = this.ang * Math.PI / 180, cs = Math.cos(th);
+    this.cE.set(E); this.cF.set(cs * 100); this.cR.innerHTML = ok ? '<span style="color:var(--ok)">пара e⁻–h⁺</span>' : '<span style="color:var(--hole)">проходит насквозь</span>';
+    const bot = this.cmp ? h * .52 : h * .82; const sx0 = w * .38, sx1 = w * .58, sy0 = h * .12, sy1 = bot;
+    // кремниевая пластина
+    const gr = ctx.createLinearGradient(sx0, 0, sx1, 0); gr.addColorStop(0, 'rgba(60,90,170,.55)'); gr.addColorStop(1, 'rgba(30,40,90,.35)'); ctx.fillStyle = gr; rr(ctx, sx0, sy0, sx1 - sx0, sy1 - sy0, 10); ctx.fill(); ctx.strokeStyle = 'rgba(160,190,255,.4)'; ctx.stroke();
+    ctx.fillStyle = 'rgba(200,215,255,.18)'; for (let x = sx0 + 10; x < sx1; x += 16) for (let y = sy0 + 10; y < sy1; y += 16) { ctx.beginPath(); ctx.arc(x, y, 1.6, 0, TAU); ctx.fill(); }
+    txt(ctx, 'Si', (sx0 + sx1) / 2, sy0 + 18, { a: 'center', s: 14, w: 800, c: '#cfe0ff' });
+    // нормаль и угол
+    const cy = (sy0 + sy1) / 2; ctx.setLineDash([4, 5]); ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.beginPath(); ctx.moveTo(sx0 - w * .3, cy); ctx.lineTo(sx0, cy); ctx.stroke(); ctx.setLineDash([]);
+    txt(ctx, `θ = ${this.ang}°`, sx0 - 70, cy - 14 - Math.tan(th) * 30, { s: 12, c: '#cdb4ff' });
+    // генерация фотонов (поток ∝ cos θ)
+    this.acc += dt * 6.5 * cs; while (this.acc > 1) { this.acc--; const hy = rnd(sy0 + 20, sy1 - 20); this.ph.push({ hy, t: 0, E, c: this.c, lam: this.lam, depth: ok ? clamp(.08 + .9 * Math.pow(Eg / E, 3) * rnd(.4, 1.2), .05, .95) : 2 }); }
+    const L = w * .34, dx = Math.cos(th), dy = Math.sin(th);
+    for (const p of this.ph) {
+      p.t += dt * 1.1; const travel = p.t * L; const sx = sx0 - dx * L, sy = p.hy - dy * L;
+      if (travel < L) { const x = sx + dx * travel, y = sy + dy * travel; photonWave(ctx, x - dx * 60, y - dy * 60, x, y, p.c, clamp(p.lam / 45, 5, 28), 5, 2.4); glow(ctx, x, y, 10, p.c.length === 7 ? p.c : C.sun, .8); }
+      else { const ins = travel - L; const D = (sx1 - sx0) * p.depth;
+        if (ins < D) { const x = sx0 + ins * .9, y = p.hy + dy * ins * .3; photonWave(ctx, x - 50, y - dy * 15, x, y, p.c, clamp(p.lam / 45, 5, 28), 4, 2, .8); }
+        else if (p.E >= Eg) { p.done = 1; const x = sx0 + D * .9, y = p.hy + dy * D * .3; this.pairs.push({ x, y, t: 0, vx: rnd(-20, 20), vy: rnd(-25, -10) }); this.jump = 1; if (Math.random() < .5) Snd.ding(.8 + p.E / 6); }
+        if (p.E < Eg) { const x = sx0 + ins * .9, y = p.hy + dy * ins * .3; photonWave(ctx, x - 50, y - dy * 15, x, y, p.c, clamp(p.lam / 45, 5, 28), 4, 2, x > sx1 ? .5 : .8); if (x > w + 40) p.done = 1; }
+      }
+    }
+    this.ph = this.ph.filter(p => !p.done && p.t < 6);
+    for (const q of this.pairs) { q.t += dt; const d = Math.min(1, q.t * 1.2) * 16; const a = q.t < 2.2 ? 1 : Math.max(0, 1 - (q.t - 2.2) * 2); glow(ctx, q.x, q.y, 22 * (1 - Math.min(1, q.t)), C.sun, .8); electron(ctx, q.x + d * .4, q.y - d, 5.5, a); hole(ctx, q.x - d * .4, q.y + d, 5.5, a); }
+    this.pairs = this.pairs.filter(q => q.t < 2.8).slice(-40);
+    if (!ok) txt(ctx, 'E < Eg: кремний «прозрачен» — фотон проходит насквозь', (sx1 + w) / 2, sy1 - 14, { a: 'center', s: 12, c: '#ff9ab5' });
+    // мини-зонная диаграмма
+    const bx0 = w * .66, bx1 = w * .95, cb0 = sy0 + 26, cb1 = cb0 + (sy1 - sy0) * .2, vb1 = sy1 - 18, vb0 = vb1 - (sy1 - sy0) * .2; const eV = (vb0 - cb1) / Eg;
+    ctx.fillStyle = 'rgba(60,140,255,.2)'; rr(ctx, bx0, cb0, bx1 - bx0, cb1 - cb0, 8); ctx.fill(); ctx.fillStyle = 'rgba(169,112,255,.22)'; rr(ctx, bx0, vb0, bx1 - bx0, vb1 - vb0, 8); ctx.fill();
+    txt(ctx, 'Зона проводимости', bx0 + 8, cb0 + 12, { s: 11, c: '#9fd0ff' }); txt(ctx, 'Валентная зона', bx0 + 8, vb1 - 10, { s: 11, c: '#cdb4ff' }); txt(ctx, 'Eg = 1,12 эВ', bx1 - 6, (cb1 + vb0) / 2, { a: 'right', s: 11.5, c: C.sun, w: 700 });
+    const ax = (bx0 + bx1) / 2 - 20, ah = Math.min(E * eV, vb0 - cb0 + 10); this.jump = Math.max(0, this.jump - dt * 1.2);
+    ctx.save(); ctx.shadowColor = this.c; ctx.shadowBlur = 14; arrow(ctx, ax, vb0, ax, vb0 - ah, this.c, 3, 10); ctx.restore(); txt(ctx, `hν = ${fmt(E, 2)} эВ`, ax + 10, vb0 - ah / 2, { s: 12, c: this.c, w: 700 });
+    if (ok) { electron(ctx, ax + 34, lerp(vb0 + 10, cb1 - 10, 1 - this.jump * 0), 6.5); hole(ctx, ax + 34, vb0 + 12, 6.5); } else { electron(ctx, ax + 34, vb0 + 12, 6.5); txt(ctx, 'энергии не хватает', ax + 46, vb0 - ah - 10, { s: 11, c: '#ff9ab5' }); }
+    // сравнение с внешним фотоэффектом
+    if (this.cmp) {
+      const y0 = h * .6, y1 = h * .88, A = 4.3; ctx.fillStyle = 'rgba(255,255,255,.04)'; rr(ctx, w * .04, y0 - 20, w * .92, y1 - y0 + 34, 18); ctx.fill();
+      txt(ctx, 'Внешний фотоэффект (металл Zn, работа выхода A ≈ 4,3 эВ)', w * .06, y0 - 4, { s: 12.5, c: '#ffd0dc', w: 700 });
+      const mx0 = w * .32, mx1 = w * .44; const mg = ctx.createLinearGradient(mx0, 0, mx1, 0); mg.addColorStop(0, '#8d97a8'); mg.addColorStop(1, '#4b5263'); ctx.fillStyle = mg; rr(ctx, mx0, y0 + 10, mx1 - mx0, y1 - y0 - 10, 6); ctx.fill();
+      if (Math.random() < dt * 2.5) this.ext.push({ t: 0, y: rnd(y0 + 24, y1 - 10) });
+      for (const p of this.ext) { p.t += dt; const x = lerp(w * .08, mx0, Math.min(1, p.t * 1.4)); if (p.t < .72) photonWave(ctx, x - 50, p.y, x, p.y, this.c, clamp(this.lam / 45, 5, 28), 4, 2); else if (E > A) { const k = (p.t - .72) * 160 * Math.sqrt(E - A + .2); electron(ctx, mx0 - k, p.y - k * .4, 6); } }
+      this.ext = this.ext.filter(p => p.t < 3);
+      txt(ctx, E > A ? `E > A → электрон вылетает наружу (Eкин = ${fmt(E - A, 2)} эВ)` : 'E < A → электроны не вылетают', w * .47, y0 + 30, { s: 12.5, c: E > A ? C.el : 'rgba(255,255,255,.6)' });
+      txt(ctx, 'Внутренний: электрон остаётся в кристалле (переход ВЗ → ЗП)', w * .47, y0 + 56, { s: 12.5, c: '#ffe0a0' });
+      txt(ctx, 'Внешний: электрон покидает материал (фотоэмиссия)', w * .47, y0 + 80, { s: 12.5, c: '#ffd0dc' });
+    }
+  }
+});
+
+/* =====================================================================
+   СЦЕНА 8 — Почему КПД не 100%: термализация и спектр
+   ===================================================================== */
+SCENES.push({
+  title: 'Почему не 100%',
+  notes: `<p>Ещё раз хотелось бы повторить: почему не все фотоны подходят и почему, например, КПД солнечных панелей не 100%?</p><p>Допустим, <b>фотон несёт энергию 2 эВ</b>, а электрону для перехода в зону проводимости нужно только <b>1,12 эВ</b>. Остальная энергия (0,88 эВ) уходит на <b>нагрев самой решётки</b> — это термализация.</p><p>Также не все фотоны создают фотоэффект, потому что они имеют разную энергию. Главное, чтобы энергия фотона была <b>не меньше 1,12 эВ</b>. Фотоны с меньшей энергией не поглощаются и не дают пар.</p>`,
+  fix: 'Исправлено: «Электрон носит энергию 2 эВ» → фотон с энергией 2 эВ; «1 12 В» → 1,12 эВ.',
+  init() {
+    const s = shell(this, { kicker: '08 · Потери', title: 'Почему КПД <span class="g">не 100%</span>', lead: 'Фотон <b>2 эВ</b> → на переход нужно <b>1,12 эВ</b> → остальные <b>0,88 эВ</b> уходят в нагрев решётки. А фотоны с E < E<sub>g</sub> вообще не поглощаются.', pts: ['s|<b>Термализация:</b> избыток E − Eg → тепло (решётка «краснеет»)', 'h|<b>Неподходящие фотоны:</b> E < Eg — проходят мимо', '|Нажмите на график, чтобы выбрать энергию фотона'] });
+    this.cv = Cv(s.visual); this.E = 2; this.Eg = 1.12; this.heat = 0; this.st = null; this.auto = 0;
+    this.sE = UI.slider(s.controls, { label: 'Энергия фотона', min: .7, max: 4, step: .01, value: 2, fmt: v => `${fmt(v, 2)} эВ · λ ≈ ${Math.round(1240 / v)} нм`, onChange: v => this.E = v });
+    UI.seg(s.controls, { label: 'Материал (ширина запрещённой зоны)', options: [{ v: .67, t: 'Ge 0,67' }, { v: 1.12, t: 'Si 1,12' }, { v: 1.42, t: 'GaAs 1,42' }, { v: 1.5, t: 'CdTe 1,5' }], value: 1.12, onChange: v => { this.Eg = v; this.calc(); } });
+    const r = el('div', 'row'); s.controls.appendChild(r); UI.button(r, { text: '⚡ Поглотить фотон', kind: 'pri', onClick: () => this.fire() });
+    const hd = hud(s.visual, 'tr'); this.cU = Counter(stat(hd, 'Используется', 'sun', '%'), v => fmt(v, 1)); this.cT = Counter(stat(hd, 'Термализация', 'ho', '%'), v => fmt(v, 1)); this.cN = Counter(stat(hd, 'E < Eg', '', '%'), v => fmt(v, 1));
+    caption(s.visual, '<b>Предел по спектру</b> (модель АЧТ 5778 K), ещё без учёта отражения, рекомбинации и сопротивления');
+    this.cv.c.dataset.noswipe = 1; const pick = e => { const b = this.cv.c.getBoundingClientRect(), x = e.clientX - b.left, y = e.clientY - b.top; const g = this.cg(); if (y > g.y0 - 20 && x > g.x0 && x < g.x1) { this.E = clamp(lerp(g.e0, g.e1, (x - g.x0) / (g.x1 - g.x0)), .7, 4); this.sE.set(this.E, true); this.sE.set(this.E); Snd.click(); } };
+    let dn = false; this.cv.c.addEventListener('pointerdown', e => { dn = true; pick(e); }); this.cv.c.addEventListener('pointermove', e => dn && pick(e)); this.cv.c.addEventListener('pointerup', () => { dn = false; });
+    this.calc();
+  },
+  calc() { const kT = 8.617e-5 * 5778; let tot = 0, use = 0, low = 0; for (let E = .01; E < 12; E += .005) { const n = E * E / (Math.exp(E / kT) - 1); tot += E * n; if (E < this.Eg) low += E * n; else use += this.Eg * n; } this.fr = { use: use / tot * 100, low: low / tot * 100, th: (tot - use - low) / tot * 100 }; this.cU && (this.cU.set(this.fr.use), this.cT.set(this.fr.th), this.cN.set(this.fr.low)); },
+  cg() { const { w, h } = this.cv; return { x0: 60, x1: w - 30, y0: h * .6, y1: h * .86, e0: .3, e1: 4.2 }; },
+  fire() { if (this.st) return; this.st = { t: 0, E: this.E }; Snd.whoosh(); },
+  enter() { this.cv.resize(); setTimeout(() => SEGS.forEach(f => f()), 50); this.auto = 1.2; }, leave() { },
+  update(dt, t) {
+    const cv = this.cv; if (cv.w < 2) cv.resize(); const { ctx, w, h } = cv; cv.clear(); const Eg = this.Eg;
+    this.auto -= dt; if (this.auto < 0 && !this.st) { this.fire(); this.auto = 4; }
+    // зонная диаграмма с термализацией
+    const X0 = 60, X1 = w * .58, vb1 = h * .48, vb0 = h * .42, top = h * .06; const eV = (vb0 - top - 20) / 4; const cbY = vb0 - Eg * eV;
+    ctx.fillStyle = 'rgba(169,112,255,.22)'; rr(ctx, X0, vb0, X1 - X0, vb1 - vb0, 6); ctx.fill(); ctx.fillStyle = 'rgba(60,140,255,.16)'; rr(ctx, X0, top, X1 - X0, cbY - top, 6); ctx.fill();
+    txt(ctx, 'Валентная зона', X0 + 8, vb1 + 12, { s: 11, c: '#cdb4ff' }); txt(ctx, 'Зона проводимости', X0 + 8, top + 12, { s: 11, c: '#9fd0ff' });
+    ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(X0, cbY); ctx.lineTo(X1, cbY); ctx.stroke(); ctx.setLineDash([]);
+    txt(ctx, `Ec (Eg = ${fmt(Eg, 2)} эВ)`, X1 - 6, cbY + 12, { a: 'right', s: 11, c: C.sun });
+    // решётка (нагрев)
+    this.heat = Math.max(0, this.heat - dt * .25); const hr = clamp(this.heat, 0, 1);
+    for (let i = 0; i < 16; i++) { const x = X0 + 14 + i * (X1 - X0 - 28) / 15, y = vb1 + 34 + Math.sin(t * (8 + hr * 30) + i) * (1 + hr * 4); glow(ctx, x, y, 14 + hr * 10, hr > .05 ? '#ff4a2a' : '#7f95d6', .25 + hr * .6); ctx.fillStyle = `rgb(${lerp(140, 255, hr)},${lerp(160, 90, hr)},${lerp(220, 60, hr)})`; ctx.beginPath(); ctx.arc(x, y, 5, 0, TAU); ctx.fill(); }
+    txt(ctx, hr > .1 ? 'решётка нагревается 🔥' : 'решётка кристалла', X1 + 8, vb1 + 34, { s: 11.5, c: hr > .1 ? '#ff9a6a' : 'rgba(255,255,255,.5)' });
+    const ex = X0 + (X1 - X0) * .42;
+    if (this.st) {
+      const s = this.st; s.t += dt; const E = s.E, ok = E >= Eg; const lvl = vb0 - E * eV;
+      if (s.t < .6) { const p = s.t / .6; photonWave(ctx, ex - 200 + p * 140, top + 10, ex - 60 + p * 60, vb0 - 4, wl2rgb(1240 / E), 9, 6, 2.5); electron(ctx, ex, vb0 + 6, 6.5); }
+      else if (!ok) { txt(ctx, 'E < Eg — фотон не поглощён', ex + 20, vb0 - 30, { s: 13, c: '#ff9ab5' }); electron(ctx, ex, vb0 + 6, 6.5); if (s.t > 2) this.st = null; }
+      else {
+        const k = s.t - .6; hole(ctx, ex, vb0 + 6, 6.5);
+        const up = Math.min(1, k / .35); let y = lerp(vb0, lvl, ease(up)); let phase = 'up';
+        if (k > .45) { const steps = Math.max(1, Math.round((E - Eg) / .14)); const q = Math.min(1, (k - .45) / 1.6); const st = Math.floor(q * steps); y = lerp(lvl, cbY + 6, Math.min(1, (st + ease((q * steps) % 1)) / steps)); phase = q >= 1 ? 'done' : 'down'; if (phase === 'down' && Math.floor(q * steps) !== s.ls) { s.ls = Math.floor(q * steps); this.heat = Math.min(1.2, this.heat + .12); s.ph = (s.ph || []).concat([{ x: ex + 10, y, t: 0 }]); } }
+        ctx.strokeStyle = hexA(C.sun, .6); ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(ex - 26, lvl); ctx.lineTo(ex + 26, lvl); ctx.stroke(); ctx.setLineDash([]);
+        electron(ctx, ex, y, 7);
+        (s.ph || []).forEach(p => { p.t += dt * 1.6; photonWave(ctx, p.x, p.y, p.x + 30 + p.t * 40, lerp(p.y, vb1 + 30, p.t), '#ff6a3c', 6, 3, 1.6, Math.max(0, 1 - p.t)); });
+        // энергобаланс
+        const bx = X1 + 30, bw = Math.min(150, w - bx - 30); if (bw > 60) { const H = E * eV, yU = vb0 - Eg * eV; ctx.fillStyle = hexA(C.sun, .8); rr(ctx, bx, yU, bw * .4, Eg * eV, 4); ctx.fill(); ctx.fillStyle = hexA('#ff5a3c', .8); rr(ctx, bx, vb0 - H, bw * .4, H - Eg * eV, 4); ctx.fill(); txt(ctx, `${fmt(Eg, 2)} эВ полезно`, bx + bw * .4 + 8, yU + Eg * eV / 2, { s: 11.5, c: C.sun, w: 700 }); txt(ctx, `${fmt(E - Eg, 2)} эВ → тепло`, bx + bw * .4 + 8, vb0 - H + (H - Eg * eV) / 2, { s: 11.5, c: '#ff8a6a', w: 700 }); txt(ctx, `hν = ${fmt(E, 2)} эВ`, bx, vb0 - H - 12, { s: 12, w: 700 }); }
+        if (phase === 'done' && k > 3) this.st = null;
+      }
+    } else electron(ctx, ex, vb0 + 6, 6.5);
+    // спектр
+    const g = this.cg(), kT = 8.617e-5 * 5778, f = E => E * E * E / (Math.exp(E / kT) - 1), fm = f(2.82 * kT); const X = E => lerp(g.x0, g.x1, (E - g.e0) / (g.e1 - g.e0)), Y = v => g.y1 - v / fm * (g.y1 - g.y0);
+    txt(ctx, 'Солнечный спектр (мощность по энергии фотонов)', g.x0, g.y0 - 26, { s: 12, c: 'rgba(255,255,255,.7)', w: 700 });
+    for (let E = g.e0; E < g.e1; E += .02) { const x = X(E), x2 = X(E + .02), v = f(E), y = Y(v); if (E < Eg) { ctx.fillStyle = 'rgba(160,170,200,.25)'; ctx.fillRect(x, y, x2 - x + .5, g.y1 - y); } else { const yu = g.y1 - (g.y1 - y) * Eg / E; ctx.fillStyle = hexA(wl2rgb(1240 / E).length === 7 ? wl2rgb(1240 / E) : C.sun, .85); ctx.fillRect(x, yu, x2 - x + .5, g.y1 - yu); ctx.fillStyle = 'rgba(255,90,60,.5)'; ctx.fillRect(x, y, x2 - x + .5, yu - y); } }
+    ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1.5; ctx.beginPath(); for (let E = g.e0; E < g.e1; E += .02) { const x = X(E), y = Y(f(E)); E === g.e0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); } ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.3)'; ctx.beginPath(); ctx.moveTo(g.x0, g.y1); ctx.lineTo(g.x1, g.y1); ctx.stroke();
+    for (let E = .5; E <= 4; E += .5) txt(ctx, fmt(E, 1), X(E), g.y1 + 12, { a: 'center', s: 10.5, c: 'rgba(255,255,255,.5)' }); txt(ctx, 'эВ', g.x1, g.y1 + 12, { a: 'right', s: 10.5, c: 'rgba(255,255,255,.5)' });
+    ctx.strokeStyle = C.sun; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(Eg), g.y0 - 8); ctx.lineTo(X(Eg), g.y1); ctx.stroke(); txt(ctx, `Eg = ${fmt(Eg, 2)}`, X(Eg) + 5, g.y0 - 6, { s: 11, c: C.sun, w: 700 });
+    ctx.strokeStyle = '#fff'; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(X(this.E), g.y0 - 8); ctx.lineTo(X(this.E), g.y1); ctx.stroke(); ctx.setLineDash([]); glow(ctx, X(this.E), Y(f(this.E)), 12, '#ffffff', .9);
+    txt(ctx, 'не поглощается', X(g.e0 + .05), g.y1 - 10, { s: 10.5, c: 'rgba(220,225,240,.75)' });
+  }
+});
+</script>
+<script>
+/* =====================================================================
+   СЦЕНА 9 — Замкнутая цепь с нагрузкой (рис. 5)
+   ===================================================================== */
+const Cell = { // модель однодиодной схемы замещения (кремниевая ячейка ~ 156×156 мм)
+  Isc0: 9.5, I0: 2.5e-9, n: 1.2, Vt: .02569, Rs: .005, Rsh: 40,
+  Isc(G) { return this.Isc0 * G / 1000; },
+  f(I, V, G) { const Vd = V + I * this.Rs; return this.Isc(G) - this.I0 * (Math.exp(Vd / (this.n * this.Vt)) - 1) - Vd / this.Rsh - I; },
+  solveR(G, R) { let a = 0, b = this.Isc(G) + 1e-9; for (let k = 0; k < 60; k++) { const m = (a + b) / 2; this.f(m, m * R, G) > 0 ? a = m : b = m; } const I = (a + b) / 2; return { I, V: I * R, P: I * I * R }; },
+  voc(G) { if (G <= 0) return 0; let a = 0, b = 1; for (let k = 0; k < 60; k++) { const m = (a + b) / 2; this.f(0, m, G) > 0 ? a = m : b = m; } return a; },
+  pmax(G) { let best = 0; for (let V = 0; V < .8; V += .005) { let a = 0, b = this.Isc(G); for (let k = 0; k < 40; k++) { const m = (a + b) / 2; this.f(m, V, G) > 0 ? a = m : b = m; } best = Math.max(best, a * V); } return best; }
+};
+SCENES.push({
+  title: 'Цепь с нагрузкой',
+  notes: `<p>Как получить из всего этого полезный ток? Если у нас есть поле — как создать замкнутую цепь?</p><p>При освещении внутри фотоэлемента постоянно образуются дополнительные электронно-дырочные пары. Внутреннее поле разделяет носители, возникшие в <b>обеднённом слое</b>. Из-за освещения изменяется распределение зарядов и их энергетическое состояние, поэтому между контактами возникает <b>фотоэлектрическое напряжение</b> (фото-ЭДС).</p><p>Что произойдёт, если соединить контакты освещённого фотоэлемента через <b>нагрузку</b>, например небольшую лампу? По замкнутой внешней цепи начнут двигаться электроны: во внешней цепи электроны проходят <b>от контакта n-области через нагрузку к контакту p-области</b>.</p><p>Внутри фотоэлемента носители могут <b>рекомбинировать</b> — это потери энергии, они показывают, почему КПД не 100%. Сопротивление самих проводников и контактов — тоже дополнительный фактор потерь.</p><p>Эта цепь даёт <b>постоянный ток</b>. <b>Рисунок 5</b> — упрощённая схема освещённого фотоэлемента с внешней нагрузкой.</p><p>Откуда берётся энергия для работы лампы? Её источник — <b>солнечные фотоны</b>, которые передали свою энергию электронам. Кремний и p-n-переход лишь обеспечивают условия для превращения энергии света в электрическую работу.</p>`,
+  fix: 'Исправлено: «объединённом слое» → обеднённом слое; «три комбинировать» → рекомбинировать; «контакту PP области» → к контакту p-области.',
+  init() {
+    const s = shell(this, { kicker: '09 · Рис. 5', title: 'Замыкаем цепь: <span class="b">ток через лампу</span>', lead: 'На свету между контактами возникает <b>фотонапряжение</b>. Подключим лампу — во внешней цепи электроны идут <b>от контакта n-области через нагрузку к контакту p-области</b>.', pts: ['e|Ток <b>постоянный (DC)</b>', 'h|Потери: <b>рекомбинация</b> внутри элемента', 'f|Потери: <b>сопротивление</b> проводников и контактов', 's|Энергию для лампы приносят <b>солнечные фотоны</b>'] });
+    this.cv = Cv(s.visual); this.G = 1000; this.R = .065; this.closed = false; this.es = Array.from({ length: 34 }, (_, i) => i / 34); this.fx = []; this.ph = []; this.sw = 0;
+    this.tg = UI.toggle(s.controls, { label: 'Замкнуть цепь', value: false, onChange: v => { this.closed = v; v ? Snd.thud() : 0; } });
+    UI.slider(s.controls, { label: 'Освещённость', min: 0, max: 1000, step: 10, value: 1000, unit: ' Вт/м²', onChange: v => this.G = v });
+    UI.slider(s.controls, { label: 'Сопротивление нагрузки', min: 0, max: 100, step: 1, value: 40, fmt: v => { const R = Math.pow(10, -2 + v / 100 * 3); this.R = R; return R < 1 ? fmt(R, 3) + ' Ом' : fmt(R, 2) + ' Ом'; }, onChange: v => this.R = Math.pow(10, -2 + v / 100 * 3) });
+    this.R = Math.pow(10, -2 + .4 * 3);
+    const hd = hud(s.visual, 'tr'); this.cV = Counter(stat(hd, 'Напряжение U', 'fi', 'В'), v => fmt(v, 3)); this.cI = Counter(stat(hd, 'Ток I', 'el', 'А'), v => fmt(v, 2)); this.cP = Counter(stat(hd, 'Мощность P = U·I', 'sun', 'Вт'), v => fmt(v, 2));
+    s.controls.appendChild(el('div', 'stat', '<div class="k">Род тока</div><div class="v" style="font-size:16px">DC — постоянный <svg width="46" height="14" style="vertical-align:middle"><path d="M2 7h42" stroke="#3cc8ff" stroke-width="2.5"/></svg></div>'));
+    caption(s.visual, '<b>Рис. 5.</b> Упрощённая схема освещённого фотоэлемента с внешней нагрузкой');
+    this.pm1000 = Cell.pmax(1000);
+  },
+  geo() { const { w, h } = this.cv; const cx0 = w * .07, cx1 = w * .44, ny0 = h * .4, ny1 = h * .47, py1 = h * .74; const lx = w * .78, ly = h * .5; const path = [[cx1 - 30, ny0], [cx1 - 30, h * .22], [lx, h * .22], [lx, ly - 34], [lx, ly + 30], [lx, h * .88], [cx0 + 40, h * .88], [cx0 + 40, py1 + 6]]; return { cx0, cx1, ny0, ny1, py1, lx, ly, path }; },
+  along(path, s) { let L = 0; const seg = []; for (let i = 1; i < path.length; i++) { const d = Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]); seg.push(d); L += d; } let d = s * L; for (let i = 0; i < seg.length; i++) { if (d <= seg[i]) { const t = d / seg[i]; return [lerp(path[i][0], path[i + 1][0], t), lerp(path[i][1], path[i + 1][1], t)]; } d -= seg[i]; } return path[path.length - 1]; },
+  enter() { this.cv.resize(); }, leave() { Snd.hum(0); },
+  update(dt, t) {
+    const cv = this.cv; if (cv.w < 2) cv.resize(); const { ctx, w, h } = cv; cv.clear(); const g = this.geo();
+    const r = this.closed ? Cell.solveR(this.G, this.R) : { I: 0, V: Cell.voc(this.G), P: 0 }; this.cV.set(r.V); this.cI.set(r.I); this.cP.set(r.P);
+    const br = clamp(r.P / this.pm1000, 0, 1.2); Snd.hum(this.closed ? clamp(r.I / 9.5, 0, 1) : 0);
+    this.sw = lerp(this.sw, this.closed ? 1 : 0, dt * 8);
+    // провода
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(190,200,225,.35)'; ctx.lineWidth = 6; ctx.beginPath(); g.path.forEach((p, i) => i ? ctx.lineTo(...p) : ctx.moveTo(...p)); ctx.stroke();
+    if (this.closed && r.I > .05) { ctx.strokeStyle = hexA('#ff8a3c', clamp(r.I * r.I * Cell.Rs * 2, 0, .5)); ctx.lineWidth = 10; ctx.stroke(); }
+    ctx.strokeStyle = hexA(C.el, .25 + .5 * clamp(r.I / 9.5, 0, 1) * this.sw); ctx.lineWidth = 2; ctx.stroke();
+    // выключатель (на верхнем проводе)
+    const sx = (g.cx1 + g.lx) / 2, sy = h * .22; ctx.fillStyle = '#03040b'; ctx.fillRect(sx - 22, sy - 6, 44, 12); ctx.fillStyle = '#c9d0ea'; ctx.beginPath(); ctx.arc(sx - 20, sy, 5, 0, TAU); ctx.arc(sx + 20, sy, 5, 0, TAU); ctx.fill();
+    const ang = lerp(-.6, 0, this.sw); ctx.strokeStyle = this.closed ? C.ok : '#ff9ab5'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(sx - 20, sy); ctx.lineTo(sx - 20 + Math.cos(ang) * 40, sy + Math.sin(ang) * 40); ctx.stroke(); txt(ctx, this.closed ? 'замкнуто' : 'разомкнуто', sx, sy - 22, { a: 'center', s: 11.5, c: this.closed ? C.ok : '#ff9ab5' });
+    // электроны во внешней цепи: n-контакт → лампа → p-контакт
+    const v = this.closed ? r.I / 9.5 * .16 : 0; for (let i = 0; i < this.es.length; i++) { this.es[i] = (this.es[i] + v * dt) % 1; const [x, y] = this.along(g.path, this.es[i]); electron(ctx, x, y, 4.5, this.closed ? .9 : .25, false); }
+    if (this.closed && r.I > .1) { const [ax, ay] = this.along(g.path, .3); arrow(ctx, ax - 30, ay - 16, ax + 30, ay - 16, C.el, 2, 9); txt(ctx, 'e⁻', ax, ay - 30, { a: 'center', s: 12, c: C.el }); }
+    // лампа
+    const lx = g.lx, ly = g.ly; glow(ctx, lx, ly, 40 + br * 140, '#ffd27a', .15 + br * .7); ctx.fillStyle = `rgba(255,${lerp(240, 230, br)},${lerp(240, 170, br)},${.12 + br * .75})`; ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(lx, ly - 4, 28, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = br > .05 ? '#fff6c8' : '#8a8f9e'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(lx - 10, ly + 24); ctx.lineTo(lx - 8, ly - 6); for (let k = 0; k < 4; k++) ctx.lineTo(lx - 6 + k * 4, ly - 12 + (k % 2) * 8); ctx.lineTo(lx + 10, ly + 24); ctx.stroke();
+    ctx.fillStyle = '#7d8598'; rr(ctx, lx - 12, ly + 22, 24, 12, 3); ctx.fill(); txt(ctx, 'Нагрузка (лампа)', lx + 14, ly + 50, { s: 12, c: 'rgba(255,255,255,.75)' });
+    // фотоэлемент
+    const gn = ctx.createLinearGradient(0, g.ny0, 0, g.ny1); gn.addColorStop(0, 'rgba(60,200,255,.45)'); gn.addColorStop(1, 'rgba(60,200,255,.2)'); ctx.fillStyle = gn; ctx.fillRect(g.cx0, g.ny0, g.cx1 - g.cx0, g.ny1 - g.ny0);
+    const gp = ctx.createLinearGradient(0, g.ny1, 0, g.py1); gp.addColorStop(0, 'rgba(255,92,138,.32)'); gp.addColorStop(1, 'rgba(255,92,138,.12)'); ctx.fillStyle = gp; ctx.fillRect(g.cx0, g.ny1, g.cx1 - g.cx0, g.py1 - g.ny1);
+    ctx.fillStyle = hexA(C.field, .25); ctx.fillRect(g.cx0, g.ny1 - 5, g.cx1 - g.cx0, 10);
+    ctx.fillStyle = '#c9d0ea'; for (let x = g.cx0 + 20; x < g.cx1 - 10; x += 44) ctx.fillRect(x, g.ny0 - 6, 8, 6); ctx.fillRect(g.cx1 - 40, g.ny0 - 8, 20, 8); ctx.fillRect(g.cx0, g.py1, g.cx1 - g.cx0, 8);
+    txt(ctx, 'n-слой', g.cx0 + 8, (g.ny0 + g.ny1) / 2, { s: 11.5, c: '#bfefff', w: 700 }); txt(ctx, 'p-слой', g.cx0 + 8, (g.ny1 + g.py1) / 2 + 20, { s: 11.5, c: '#ffc0d0', w: 700 }); txt(ctx, 'p-n-переход', g.cx1 - 6, g.ny1 + 14, { a: 'right', s: 10.5, c: '#cdb4ff' });
+    txt(ctx, 'контакт n (−)', g.cx1 - 30, g.ny0 - 18, { a: 'center', s: 11, c: C.el }); txt(ctx, 'контакт p (+)', g.cx0 + 90, g.py1 + 22, { a: 'center', s: 11, c: C.hole });
+    // свет и генерация пар
+    const rate = this.G / 1000 * 9; if (Math.random() < rate * dt) this.ph.push({ x: rnd(g.cx0 + 15, g.cx1 - 15), t: 0, y: rnd(g.ny1 + 6, g.py1 - 20) });
+    for (const p of this.ph) { p.t += dt * 2.2; const yy = lerp(h * .02, p.y, Math.min(1, p.t)); photonWave(ctx, p.x - 8, yy - 50, p.x, yy, C.sun, 8, 4, 2, .85); if (p.t >= 1) { p.done = 1; const rec = Math.random() < (this.closed ? .12 : .9); this.fx.push({ x: p.x, y: p.y, t: 0, rec }); } }
+    this.ph = this.ph.filter(p => !p.done);
+    for (const f of this.fx) {
+      f.t += dt; const k = Math.min(1, f.t / .8);
+      if (f.rec && f.t > .5) { glow(ctx, f.x, f.y - 10, 20, '#ff6a3c', Math.max(0, 1 - (f.t - .5) * 2)); if (f.t < .9) txt(ctx, 'рекомбинация', f.x + 10, f.y - 24, { s: 10, c: '#ffb08a', alpha: 1 - (f.t - .5) * 2 }); }
+      else { electron(ctx, f.x, lerp(f.y, (g.ny0 + g.ny1) / 2, ease(k)) - (f.rec ? f.t * 20 : 0), 4.5, 1 - Math.max(0, f.t - .8) * 3, false); hole(ctx, f.x, lerp(f.y, g.py1 - 8, ease(k)), 4.5, 1 - Math.max(0, f.t - .8) * 3, false); }
+    }
+    this.fx = this.fx.filter(f => f.t < 1.1);
+    if (!this.closed) txt(ctx, `Разомкнуто: Uхх ≈ ${fmt(r.V, 2)} В, I = 0`, w - 20, h * .955, { a: 'right', s: 12, c: 'rgba(255,255,255,.7)' });
+    else txt(ctx, `Потери I²R: ${fmt(r.I * r.I * Cell.Rs, 2)} Вт`, w - 20, h * .955, { a: 'right', s: 12, c: '#ffb08a' });
+  }
+});
+
+/* =====================================================================
+   СЦЕНА 10 — От ячейки к электростанции, инвертор DC→AC, цепочка
+   ===================================================================== */
+SCENES.push({
+  title: 'От элемента к СЭС',
+  notes: `<p>Одного фотоэлемента недостаточно, поэтому их используют очень много — чтобы вырабатывать достаточное количество энергии: ячейки объединяют в модули, модули — в массивы, массивы — в солнечную электростанцию.</p><p>А так как большинство приборов работает на <b>переменном токе</b>, нужен прибор, который будет преобразовывать постоянный ток в переменный, — это <b>инвертор</b>.</p><p>Последовательность преобразования выглядит так: <b>поглощение фотона → образование электронно-дырочной пары → разделение и сбор зарядов → появление напряжения → ток во внешней цепи</b> → инвертор → сеть.</p>`,
+  fix: 'Исправлено: «на перемена токи» → на переменном токе; «электронных выборочной пары» → электронно-дырочной пары.',
+  init() {
+    const s = shell(this, { kicker: '10 · Масштаб', title: 'От ячейки к <span class="g">электростанции</span>', lead: 'Одного элемента мало (~0,6 В, ~5 Вт). Их объединяют в <b>модули</b>, модули — в <b>массивы</b>, а массивы — в <b>СЭС</b>. Большинство приборов работает на переменном токе, поэтому нужен <b>инвертор</b>.' });
+    this.cv = Cv(s.visual); this.z = 0; this.tz = 0; this.inv = 0; this.tinv = 0;
+    this.sg = UI.seg(s.controls, { label: 'Уровень', options: [{ v: 0, t: 'Ячейка' }, { v: 1, t: 'Модуль' }, { v: 2, t: 'Массив' }, { v: 3, t: 'СЭС' }], value: 0, onChange: v => { this.tz = v; this.auto = false; Snd.whoosh(); } });
+    const r = el('div', 'row'); s.controls.appendChild(r);
+    UI.button(r, { text: '▶ Масштабировать', kind: 'pri', onClick: () => { this.z = 0; this.tz = 0; this.auto = true; this.at = 0; Snd.whoosh(); } });
+    this.it = UI.toggle(s.controls, { label: 'Инвертор DC → AC', value: false, onChange: v => this.tinv = v ? 1 : 0 });
+    const ch = el('div', 'chain'); s.controls.appendChild(el('div', 'ctl-h', '<span>Цепочка преобразования</span>')); s.controls.appendChild(ch);
+    this.steps = ['Поглощение фотона', 'Электронно-дырочная пара', 'Разделение и сбор зарядов', 'Напряжение', 'Ток во внешней цепи', 'Инвертор DC→AC', 'Сеть ~230 В'].map((x, i, a) => { const e = el('span', 'st', x); ch.appendChild(e); if (i < a.length - 1) ch.appendChild(el('span', 'ar', '→')); return e; });
+    UI.button(s.controls, { text: '▶ Пошагово', onClick: () => this.playChain() });
+    const hd = hud(s.visual, 'tr'); this.lab = el('div', 'stat sun', ''); hd.appendChild(this.lab);
+    const ib = el('div', 'stat'); ib.style.cssText = 'position:absolute;right:16px;bottom:16px;width:min(280px,40%);height:120px;z-index:5;padding:8px 10px;pointer-events:none'; s.visual.appendChild(ib); ib.innerHTML = '<div class="k" id="invK">Ток: постоянный (DC)</div>'; const iw = el('div'); iw.style.cssText = 'position:absolute;left:8px;right:8px;top:28px;bottom:8px'; ib.appendChild(iw); this.icv = Cv(iw); this.invK = ib.querySelector('.k');
+    caption(s.visual, '<b>Масштабирование:</b> ячейка → модуль → массив → поле панелей СЭС');
+  },
+  playChain() { clearTimeout(this.ct); this.steps.forEach(e => e.classList.remove('lit', 'past')); let i = 0; const nx = () => { if (i > 0) { this.steps[i - 1].classList.remove('lit'); this.steps[i - 1].classList.add('past'); } if (i < this.steps.length) { this.steps[i].classList.add('lit'); Snd.ding(.8 + i * .08); if (i === 5) { this.it.set(true); } i++; this.ct = setTimeout(nx, 1100); } }; nx(); },
+  enter() { this.cv.resize(); this.icv.resize(); setTimeout(() => SEGS.forEach(f => f()), 50); setTimeout(() => this.playChain(), 900); }, leave() { clearTimeout(this.ct); },
+  update(dt, t) {
+    const cv = this.cv; if (cv.w < 2) cv.resize(); const { ctx, w, h } = cv; cv.clear();
+    if (this.auto) { this.at += dt; this.tz = Math.min(3, this.at / 2); if (this.at > 6.3) this.auto = false; const lv = Math.round(this.tz); if (lv !== this.sg.get()) this.sg.set(lv, true); }
+    this.z = lerp(this.z, this.tz, Math.min(1, dt * (this.auto ? 6 : 2.2)));
+    const z = this.z, widths = [1.8, 11, 78, 340]; const zi = Math.min(2, Math.floor(z)), zf = z - zi; const Wu = Math.exp(lerp(Math.log(widths[zi]), Math.log(widths[zi + 1]), zf)); const ppu = Math.min(w, h * 1.6) / Wu;
+    // геометрия мира
+    const CW = 1, MW = 6 * 1.06 + .3, MH = 10 * 1.06 + .3, AW = 8 * (MW + .25), AH = MH + 4.5, SC = 5, SR = 8;
+    const cellC = [2 * 1.06 + .5 + .15, 5 * 1.06 + .5 + .15], tA = [2, 3], tM = 3; const aO = [tA[0] * (AW + 4), tA[1] * AH], mO = [aO[0] + tM * (MW + .25), aO[1]];
+    const P0 = [mO[0] + cellC[0], mO[1] + cellC[1]], P1 = [mO[0] + MW / 2, mO[1] + MH / 2], P2 = [aO[0] + AW / 2, aO[1] + MH / 2], P3 = [(SC * (AW + 4) - 4) / 2, (SR * AH - 4.5) / 2];
+    const Ps = [P0, P1, P2, P3]; const cc = [lerp(Ps[zi][0], Ps[zi + 1][0], easeIO(zf)), lerp(Ps[zi][1], Ps[zi + 1][1], easeIO(zf))];
+    const X = x => w / 2 + (x - cc[0]) * ppu, Y = y => h / 2 + (y - cc[1]) * ppu;
+    // земля станции
+    const gz = clamp(z - 1.5, 0, 1); if (gz > 0) { ctx.fillStyle = `rgba(30,60,40,${gz * .35})`; ctx.fillRect(X(-6), Y(-6), (SC * (AW + 4) + 8) * ppu, (SR * AH + 6) * ppu); }
+    for (let ai = 0; ai < SC; ai++) for (let aj = 0; aj < SR; aj++) {
+      const ax = ai * (AW + 4), ay = aj * AH; if (X(ax + AW) < 0 || X(ax) > w || Y(ay + MH) < 0 || Y(ay) > h) continue;
+      if (ppu * AW < 6) { ctx.fillStyle = '#1d4fb8'; ctx.fillRect(X(ax), Y(ay), AW * ppu, MH * ppu); continue; }
+      // стойка массива
+      if (ppu * MH > 6) { ctx.fillStyle = 'rgba(140,150,170,.25)'; ctx.fillRect(X(ax - .2), Y(ay + MH + .1), (AW + .4) * ppu, .5 * ppu); }
+      for (let m = 0; m < 8; m++) {
+        const mx = ax + m * (MW + .25); if (X(mx + MW) < 0 || X(mx) > w) continue;
+        ctx.fillStyle = '#d6dbe8'; ctx.fillRect(X(mx), Y(ay), MW * ppu, MH * ppu);
+        if (ppu < 3.2) { ctx.fillStyle = '#1a47a8'; ctx.fillRect(X(mx + .15), Y(ay + .15), (MW - .3) * ppu, (MH - .3) * ppu); continue; }
+        for (let ci = 0; ci < 6; ci++) for (let cj = 0; cj < 10; cj++) {
+          const x = mx + .15 + ci * 1.06, y = ay + .15 + cj * 1.06; const sx = X(x), sy = Y(y), s = CW * ppu; if (sx > w || sy > h || sx + s < 0 || sy + s < 0) continue;
+          const gg = ctx.createLinearGradient(sx, sy, sx + s, sy + s); gg.addColorStop(0, '#2a62d6'); gg.addColorStop(1, '#0b2a6b'); ctx.fillStyle = gg; ctx.fillRect(sx, sy, s, s);
+          if (s > 40) { ctx.strokeStyle = 'rgba(220,230,255,.55)'; ctx.lineWidth = Math.max(1, s * .012); for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(sx + s * k / 4, sy); ctx.lineTo(sx + s * k / 4, sy + s); ctx.stroke(); } ctx.lineWidth = Math.max(.5, s * .003); ctx.strokeStyle = 'rgba(220,230,255,.25)'; for (let k = 1; k < 30; k++) { ctx.beginPath(); ctx.moveTo(sx, sy + s * k / 30); ctx.lineTo(sx + s, sy + s * k / 30); ctx.stroke(); } }
+        }
+      }
+    }
+    // блеск
+    const sh = (t * .15) % 1.6 - .3; const lg = ctx.createLinearGradient(w * sh, 0, w * sh + w * .3, h); lg.addColorStop(0, 'rgba(255,255,255,0)'); lg.addColorStop(.5, 'rgba(255,255,255,.07)'); lg.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = lg; ctx.fillRect(0, 0, w, h);
+    const L = [['1 солнечная ячейка', '≈ 0,6 В · ≈ 5 Вт'], ['Модуль: 60 ячеек', '≈ 30–40 В · ≈ 350 Вт'], ['Массив: 8 модулей', '≈ 2,8 кВт'], ['Поле СЭС (фрагмент)', '320 модулей ≈ 110 кВт; реальные СЭС — МВт']][Math.round(z)];
+    this.lab.innerHTML = `<div class="k">${L[0]}</div><div class="v" style="font-size:18px">${L[1]}</div>`;
+    // инвертор
+    this.inv = lerp(this.inv, this.tinv, dt * 2.5); const ic = this.icv; if (ic.w < 2) ic.resize(); const x2 = ic.ctx; ic.clear(); const iw = ic.w, ih = ic.h;
+    x2.strokeStyle = 'rgba(255,255,255,.15)'; x2.lineWidth = 1; x2.beginPath(); x2.moveTo(0, ih / 2); x2.lineTo(iw, ih / 2); x2.stroke();
+    const col = this.inv > .5 ? C.sun : C.el; x2.strokeStyle = col; x2.shadowColor = col; x2.shadowBlur = 10; x2.lineWidth = 2.5; x2.beginPath();
+    for (let x = 0; x <= iw; x += 2) { const y = ih / 2 - lerp(ih * .3, Math.sin((x / iw) * TAU * 2.5 - t * 6) * ih * .38, easeIO(this.inv)); x ? x2.lineTo(x, y) : x2.moveTo(x, y); } x2.stroke(); x2.shadowBlur = 0;
+    this.invK.textContent = this.inv > .5 ? 'После инвертора: переменный (AC) ~50 Гц' : 'Ток: постоянный (DC)';
+  }
+});
+
+/* =====================================================================
+   СЦЕНА 11 — КПД в цифрах: Sankey-диаграмма потерь
+   ===================================================================== */
+SCENES.push({
+  title: 'КПД в цифрах',
+  notes: `<p>Если говорить про цифры КПД: например, если на фотоэлемент поступает <b>100 Вт</b> солнечного излучения, а электрическая мощность составляет <b>22 Вт</b>, его КПД будет равен <b>22%</b>.</p><p>Остальная энергия не обязательно превращается в тепло — то есть элемент не обязательно нагреется на все 78 Вт. Часть света <b>отражается</b> или <b>проходит</b> через устройство, часть теряется в виде <b>сопротивления</b>.</p><p>Поэтому, например, для солнечных элементов используют <b>антибликовые покрытия</b> — чтобы захватить как можно большее количество света.</p>`,
+  fix: 'Исправлено: «поступать 100 ват» → поступает 100 Вт; «как больше большее кол» → как можно больше света.',
+  init() {
+    const s = shell(this, { kicker: '11 · Энергобаланс', title: '100 Вт света → <span class="g">22 Вт</span> электричества', lead: '<span class="s-t">η = P<sub>эл</sub> / P<sub>свет</sub> = 22 / 100 = 22%</span>. Остальные 78 Вт — не обязательно тепло: часть света <b>отражается</b> или <b>проходит</b> насквозь.' });
+    this.cv = Cv(s.visual); this.arc = true;
+    const big = el('div', 'stat sun'); big.style.cssText = 'background:none;border:0;padding:0;backdrop-filter:none'; big.innerHTML = '<div class="k">КПД элемента</div><div class="v" style="font-size:clamp(44px,5vw,78px)"><span>0</span><small>%</small></div>'; s.controls.appendChild(big); this.cE = Counter(big.querySelector('span'), v => fmt(v, 1));
+    UI.toggle(s.controls, { label: 'Антибликовое покрытие', value: true, onChange: v => { this.arc = v; this.setV(); } });
+    s.controls.appendChild(el('div', 'callout blue', 'Антибликовое покрытие (например, SiNₓ, ~75 нм) снижает отражение кремния с ~30% до нескольких процентов — свет «захватывается» внутри элемента.'));
+    this.items = [{ k: 'Отражение', c: '#9fb4e0' }, { k: 'Неподходящие фотоны (E < Eg)', c: '#8088aa' }, { k: 'Термализация (E − Eg → тепло)', c: '#ff6a3c' }, { k: 'Рекомбинация и др.', c: C.hole }, { k: 'Сопротивление', c: C.field }, { k: 'Электричество', c: C.el }];
+    this.cur = [0, 0, 0, 0, 0, 0]; this.dots = Array.from({ length: 160 }, () => ({ s: Math.random(), i: 0, o: Math.random() })); this.setV();
+    caption(s.visual, '<b>Sankey-диаграмма:</b> куда уходят 100 Вт солнечного света (типичный кремниевый элемент)');
+  },
+  setV() { const base = [3, 19, 33, 19, 4, 22]; if (this.arc) this.tgt = base; else { const k = 88 / 97; this.tgt = [12, ...base.slice(1).map(v => v * k)]; } this.cE.set(this.tgt[5]); },
+  enter() { this.cv.resize(); this.cur = [0, 0, 0, 0, 0, 0]; this.setV(); }, leave() { },
+  update(dt, t) {
+    const cv = this.cv; if (cv.w < 2) cv.resize(); const { ctx, w, h } = cv; cv.clear();
+    for (let i = 0; i < 6; i++) this.cur[i] = lerp(this.cur[i], this.tgt[i], Math.min(1, dt * 3));
+    const x0 = w * .1, x1 = w * .62, top = h * .12, H = h * .62, sc = H / 100, gap = h * .035; const tot = this.cur.reduce((a, b) => a + b, 0);
+    // источник
+    const sg = ctx.createLinearGradient(x0 - 26, 0, x0, 0); sg.addColorStop(0, '#fff1b8'); sg.addColorStop(1, C.sun); ctx.fillStyle = sg; rr(ctx, x0 - 26, top, 26, tot * sc, 6); ctx.fill(); glow(ctx, x0 - 13, top + H / 2, H * .5, C.sun, .15);
+    txt(ctx, '☀ 100 Вт', x0 - 13, top - 16, { a: 'center', s: 14, w: 800, c: C.sun });
+    let sy = top, ty = top - gap * 1.2; const bands = [];
+    for (let i = 0; i < 6; i++) { const v = this.cur[i] * sc; const tyy = i === 5 ? top + H + gap * 1.6 - v : ty; bands.push({ sy, ty: tyy, v, c: this.items[i].c }); sy += v; ty += v + gap; }
+    bands.forEach((b, i) => {
+      const g = ctx.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, hexA(C.sun, .55)); g.addColorStop(1, hexA(b.c, .75)); ctx.fillStyle = g;
+      const mx = (x0 + x1) / 2; ctx.beginPath(); ctx.moveTo(x0, b.sy); ctx.bezierCurveTo(mx, b.sy, mx, b.ty, x1, b.ty); ctx.lineTo(x1, b.ty + b.v); ctx.bezierCurveTo(mx, b.ty + b.v, mx, b.sy + b.v, x0, b.sy + b.v); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = b.c; rr(ctx, x1, b.ty, 10, Math.max(1, b.v), 3); ctx.fill(); if (i === 5) glow(ctx, x1 + 5, b.ty + b.v / 2, 90, C.el, .25 + .1 * Math.sin(t * 3));
+      txt(ctx, `${this.items[i].k}`, x1 + 20, b.ty + b.v / 2 - 8, { s: i === 5 ? 15 : 12.5, w: i === 5 ? 800 : 600, c: i === 5 ? C.el : 'rgba(235,240,255,.85)' }); txt(ctx, `${fmt(this.cur[i], 1)} Вт`, x1 + 20, b.ty + b.v / 2 + 9, { s: i === 5 ? 15 : 12.5, w: 800, c: b.c });
+    });
+    // частицы потока
+    for (const d of this.dots) { d.s += dt * .35; if (d.s > 1) { d.s = 0; let r = Math.random() * tot, k = 0; while (k < 5 && r > this.cur[k]) { r -= this.cur[k]; k++; } d.i = k; d.o = Math.random(); } const b = bands[d.i]; if (!b) continue; const s = d.s, u = s * s * (3 - 2 * s); const x = lerp(x0, x1, s), y = lerp(b.sy, b.ty, u) + b.v * d.o; ctx.fillStyle = hexA(d.i === 5 ? '#d8f6ff' : '#ffffff', .7); ctx.beginPath(); ctx.arc(x, y, 1.6, 0, TAU); ctx.fill(); }
+  }
+});
+</script>
+<script>
+/* =====================================================================
+   СЦЕНА 12 — Симулятор СЭС (главный интерактив)
+   ===================================================================== */
+const Sim = {
+  lat: 55.75, mDays: [17, 47, 75, 105, 135, 162, 198, 228, 258, 288, 318, 344], mNames: ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'],
+  mat: { si: { n: 'Si', eta: .22, k: -.004 }, gaas: { n: 'GaAs', eta: .29, k: -.002 }, pero: { n: 'Перовскит', eta: .25, k: -.0025 } },
+  sun(t, m) { const r = Math.PI / 180, n = this.mDays[m - 1], d = 23.45 * Math.sin(r * 360 / 365 * (284 + n)) * r, f = this.lat * r, hA = 15 * (t - 12) * r;
+    const sa = Math.sin(f) * Math.sin(d) + Math.cos(f) * Math.cos(d) * Math.cos(hA), al = Math.asin(sa); const g = Math.atan2(Math.sin(hA) * Math.cos(d), Math.cos(hA) * Math.cos(d) * Math.sin(f) - Math.sin(d) * Math.cos(f));
+    return { al, g, v: [-Math.cos(al) * Math.sin(g), Math.sin(al), Math.cos(al) * Math.cos(g)] }; },
+  calc(t, p) {
+    const s = this.sun(t, p.m), r = Math.PI / 180, b = p.tilt * r, gp = p.az * r; const n = [-Math.sin(b) * Math.sin(gp), Math.cos(b), Math.sin(b) * Math.cos(gp)];
+    const cos = s.v[0] * n[0] + s.v[1] * n[1] + s.v[2] * n[2]; let G = 0;
+    if (s.al > 0) { const ad = s.al / r, AM = 1 / (Math.sin(s.al) + .50572 * Math.pow(ad + 6.07995, -1.6364)); G = 1361 * Math.pow(.7, Math.pow(AM, .678)); }
+    const M = this.mat[p.mat], kT = 1 + M.k * (p.temp - 25), kC = 1 - .75 * p.cloud / 100, kA = p.arc ? 1 : .91, S = p.N * 2;
+    const P = G * S * M.eta * Math.max(0, cos) * kT * kC * kA; return { P, G, cos, s, kT, kC, S, eta: M.eta * kA };
+  }
+};
+SCENES.push({
+  title: 'Симулятор СЭС',
+  notes: `<p><i>(Дополнительный интерактивный экран — в транскрипции его нет, комментарий свободный.)</i></p><p>Соберём всё вместе. Мощность электростанции можно оценить по формуле <b>P = G · S · η · cos θ · k<sub>темп</sub> · k<sub>облаков</sub></b>: G — интенсивность солнечного излучения, S — площадь панелей, η — КПД элемента, θ — угол между лучами и нормалью к панели.</p><p>Меняя время суток, видим, как Солнце поднимается и опускается: меняется и G (путь луча в атмосфере), и cos θ. Зимой Солнце ниже — выработка меньше. Наклон и поворот панелей позволяют «смотреть» на Солнце. Облака уменьшают поступление света, а нагрев панелей снижает КПД — примерно на 0,4% на каждый градус выше 25 °C для кремния. Антибликовое покрытие увеличивает поглощение света.</p><p>Важно: угол падения меняет число фотонов на единицу площади, но не энергию отдельного фотона.</p>`,
+  fix: 'Модель упрощённая: учитывается только прямое излучение, широта ≈ 55,75° (Москва), солнечное время.',
+  init() {
+    const s = shell(this, { kicker: '12 · Симулятор', title: 'Симулятор <span class="g">солнечной электростанции</span>', wide: true });
+    this.v = s.visual; s.visual.classList.add('drag');
+    s.controls.before(Object.assign(el('div', 'formula rv', 'P = <span class="s-t">G</span> · S · η · cos θ · k<sub>темп</sub> · k<sub>обл</sub>'), {}));
+    this.p = { t: 12, m: 6, tilt: 35, az: 0, cloud: 10, temp: 25, mat: 'si', N: 500, arc: true }; const p = this.p; this.play = false;
+    const r = el('div', 'row'); s.controls.appendChild(r); this.bP = UI.button(r, { text: '▶ Реальное время', kind: 'pri', onClick: () => { this.play = !this.play; this.bP.textContent = this.play ? '❚❚ Пауза' : '▶ Реальное время'; } });
+    const hh = v => `${String(Math.floor(v)).padStart(2, '0')}:${String(Math.round((v % 1) * 60) % 60).padStart(2, '0')}`;
+    this.sT = UI.slider(s.controls, { label: 'Время суток', min: 0, max: 24, step: .1, value: p.t, fmt: hh, onChange: v => p.t = v });
+    UI.slider(s.controls, { label: 'Месяц (высота Солнца)', min: 1, max: 12, step: 1, value: p.m, fmt: v => Sim.mNames[v - 1], onChange: v => p.m = v });
+    UI.slider(s.controls, { label: 'Наклон панелей β', min: 0, max: 90, step: 1, value: p.tilt, unit: '°', c1: '#7a60ff', c2: '#c9b2ff', onChange: v => p.tilt = v });
+    UI.slider(s.controls, { label: 'Поворот (азимут, 0° = юг)', min: -90, max: 90, step: 1, value: p.az, fmt: v => `${v}° ${v < 0 ? 'к востоку' : v > 0 ? 'к западу' : 'юг'}`, c1: '#7a60ff', c2: '#c9b2ff', onChange: v => p.az = v });
+    UI.slider(s.controls, { label: 'Облачность', min: 0, max: 100, step: 1, value: p.cloud, unit: '%', c1: '#6b7a99', c2: '#cfd8ea', onChange: v => p.cloud = v });
+    UI.slider(s.controls, { label: 'Температура панелей', min: -10, max: 85, step: 1, value: p.temp, unit: ' °C', c1: '#3c7bff', c2: '#ff6a3c', onChange: v => p.temp = v });
+    UI.seg(s.controls, { label: 'Материал элемента (КПД)', options: [{ v: 'si', t: 'Si 22%' }, { v: 'gaas', t: 'GaAs 29%' }, { v: 'pero', t: 'Перовскит 25%' }], value: 'si', onChange: v => p.mat = v });
+    UI.slider(s.controls, { label: 'Число панелей (по 2 м²)', min: 10, max: 5000, step: 10, value: p.N, fmt: v => `${fmt(v)} шт · ${fmt(v * 2)} м²`, c1: '#2a8cff', c2: C.el, onChange: v => { p.N = v; this.layout(); } });
+    UI.toggle(s.controls, { label: 'Антибликовое покрытие', value: true, onChange: v => p.arc = v });
+    const hd = hud(s.visual, 'tr'); this.cP = Counter(stat(hd, 'Мощность сейчас', 'sun', 'кВт'), v => fmt(v, v < 100 ? 1 : 0)); this.cD = Counter(stat(hd, 'За день', 'el', 'кВт·ч'), v => fmt(v, 0));
+    const hs = el('div', 'stat ok', '<div class="k">Обеспечит домов*</div><div class="v"><span>0</span></div><div class="homes"></div>'); hd.appendChild(hs); this.cH = Counter(hs.querySelector('span'), v => fmt(v, 0)); this.homes = hs.querySelector('.homes');
+    const ht = el('div', 'row mini'); s.controls.before(ht); ht.classList.add('rv'); this.cA = Counter(stat(ht, 'Высота Солнца', '', '°'), v => fmt(v, 0)); this.cG = Counter(stat(ht, 'G', 'sun', 'Вт/м²'), v => fmt(v, 0)); this.cC = Counter(stat(ht, 'cos θ', 'fi'), v => fmt(v, 2)); this.cK = Counter(stat(ht, 'k темп', 'ho'), v => fmt(v, 2));
+    const cb = el('div', 'stat'); cb.className = 'stat chartbox'; cb.style.cssText = 'position:absolute;right:16px;bottom:16px;width:min(380px,48%);height:150px;z-index:5;pointer-events:none;padding:8px 12px'; cb.innerHTML = '<div class="k">Выработка за день, кВт</div>'; const cw = el('div'); cw.style.cssText = 'position:absolute;left:10px;right:10px;top:26px;bottom:8px'; cb.appendChild(cw); s.visual.appendChild(cb); this.ch = Cv(cw);
+    caption(s.visual, '* ≈ 10 кВт·ч в сутки на дом · широта Москвы · перетащите сцену, колесо — масштаб').style.maxWidth = '48%';
+    if (HAS3D) this.init3D(); else this.cv = Cv(s.visual);
+  },
+  init3D() {
+    const v = this.v, R = this.r = makeRenderer(v, true), S = this.s = new THREE.Scene(); const cam = this.cam = new THREE.PerspectiveCamera(42, 1, .5, 900);
+    this.orb = { yaw: .9, pitch: .42, tyaw: .9, tpitch: .42, dist: 34, tdist: 34, pmin: .08, pmax: 1.35, dmin: 14, dmax: 90 }; dragRotate(R.domElement, this.orb);
+    S.fog = new THREE.Fog(0x0a1020, 80, 300);
+    const gr = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshStandardMaterial({ color: 0x24331f, roughness: 1 })); gr.rotation.x = -Math.PI / 2; gr.receiveShadow = true; S.add(gr);
+    const pad = new THREE.Mesh(new THREE.PlaneGeometry(46, 40), new THREE.MeshStandardMaterial({ color: 0x3a3f36, roughness: 1 })); pad.rotation.x = -Math.PI / 2; pad.position.y = .02; pad.receiveShadow = true; S.add(pad);
+    this.hemi = new THREE.HemisphereLight(0xa8c8ff, 0x2a2a20, .5); S.add(this.hemi);
+    const dl = this.dl = new THREE.DirectionalLight(0xfff2d8, 1.5); dl.castShadow = true; dl.shadow.mapSize.set(2048, 2048); Object.assign(dl.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 200 }); dl.shadow.bias = -.0005; S.add(dl); S.add(dl.target);
+    this.sun = new THREE.Mesh(new THREE.SphereGeometry(5, 24, 16), new THREE.MeshBasicMaterial({ color: 0xffe2a0, fog: false })); const sg = this.sg = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false })); sg.scale.set(60, 60, 1); this.sun.add(sg); S.add(this.sun);
+    const sp = []; for (let i = 0; i < 1200; i++) { const th = rnd(0, TAU), ph = rnd(.05, 1.5), r = 500; sp.push(Math.cos(th) * Math.cos(ph) * r, Math.sin(ph) * r, Math.sin(th) * Math.cos(ph) * r); } const sgeo = new THREE.BufferGeometry(); sgeo.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3)); this.stars = new THREE.Points(sgeo, new THREE.PointsMaterial({ color: 0xffffff, size: 1.6, transparent: true, opacity: 0, fog: false, depthWrite: false })); S.add(this.stars);
+    // панели (общие геометрии/материалы)
+    this.pGeo = new THREE.BoxGeometry(1.0, .04, 1.65); const frameM = new THREE.MeshStandardMaterial({ color: 0xb8c0d0, metalness: .7, roughness: .35 });
+    this.faceM = new THREE.MeshStandardMaterial({ map: cellTexture(6, 10), metalness: .4, roughness: .25, emissive: 0x2050ff, emissiveIntensity: 0 });
+    this.pMats = [frameM, frameM, this.faceM, frameM, frameM, frameM]; this.legGeo = new THREE.CylinderGeometry(.05, .05, 1, 6); this.legM = new THREE.MeshStandardMaterial({ color: 0x6b7385, metalness: .6, roughness: .5 });
+    this.pv = new THREE.Group(); S.add(this.pv); this.panels = [];
+    // инверторная и ЛЭП
+    const inv = new THREE.Mesh(new THREE.BoxGeometry(3, 2.2, 2), new THREE.MeshStandardMaterial({ color: 0xdfe4ee, roughness: .6 })); inv.position.set(-27, 1.1, 0); inv.castShadow = true; S.add(inv);
+    const lamp = new THREE.Mesh(new THREE.BoxGeometry(.6, .3, .05), new THREE.MeshBasicMaterial({ color: 0x4cffb0 })); lamp.position.set(-25.5, 1.6, 0); S.add(lamp); this.invLamp = lamp;
+    for (let i = 0; i < 4; i++) { const pl = new THREE.Mesh(new THREE.CylinderGeometry(.12, .18, 9, 6), this.legM); pl.position.set(-34 - i * 16, 4.5, 0); pl.castShadow = true; S.add(pl); const cr = new THREE.Mesh(new THREE.BoxGeometry(.2, .2, 3), this.legM); cr.position.set(-34 - i * 16, 8.6, 0); S.add(cr); }
+    // дома
+    this.wins = new THREE.MeshBasicMaterial({ color: 0x332a18 });
+    for (let i = 0; i < 9; i++) { const g = new THREE.Group(); const b = new THREE.Mesh(new THREE.BoxGeometry(3, 2.4, 3), new THREE.MeshStandardMaterial({ color: 0xcfc7b8, roughness: .9 })); b.position.y = 1.2; b.castShadow = true; g.add(b); const rf = new THREE.Mesh(new THREE.ConeGeometry(2.5, 1.6, 4), new THREE.MeshStandardMaterial({ color: 0x8a3b2c, roughness: .8 })); rf.position.y = 3.2; rf.rotation.y = Math.PI / 4; rf.castShadow = true; g.add(rf); const w1 = new THREE.Mesh(new THREE.PlaneGeometry(.8, .7), this.wins); w1.position.set(0, 1.3, 1.51); g.add(w1); g.position.set(-40 - (i % 3) * 6, 0, 14 + Math.floor(i / 3) * 6); S.add(g); }
+    // облака
+    this.clouds = []; const cm = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
+    for (let i = 0; i < 16; i++) { const g = new THREE.Group(); for (let k = 0; k < 5; k++) { const m = new THREE.Mesh(new THREE.SphereGeometry(rnd(2.5, 4.5), 12, 10), cm); m.position.set(rnd(-5, 5), rnd(-.8, .8), rnd(-3, 3)); g.add(m); } g.position.set(rnd(-120, 120), rnd(26, 34), rnd(-90, 90)); g.userData.v = rnd(1.5, 3); S.add(g); this.clouds.push(g); }
+    this.cloudM = cm; this.layout();
+  },
+  layout() {
+    if (!HAS3D || !this.pv) return; const n = Math.min(120, this.p.N); while (this.panels.length) this.pv.remove(this.panels.pop());
+    const perRow = 12, rows = Math.ceil(n / perRow);
+    for (let i = 0; i < n; i++) { const c = i % perRow, r = Math.floor(i / perRow); const g = new THREE.Group(); g.position.set((c - (perRow - 1) / 2) * 1.12 + (c >= perRow / 2 ? 1 : -1) * .5, 1.1, (r - (rows - 1) / 2) * 3.4);
+      const m = new THREE.Mesh(this.pGeo, this.pMats); m.castShadow = true; m.receiveShadow = true; g.add(m); const l = new THREE.Mesh(this.legGeo, this.legM); l.scale.y = 1.1; l.position.set(g.position.x, .55, g.position.z); l.castShadow = true; this.pv.add(l); this.pv.add(g); this.panels.push(g, l); }
+  },
+  enter() { if (this.orb) { this.orb.dist = 90; this.orb.yaw = -.4; } setTimeout(() => SEGS.forEach(f => f()), 50); this.ch.resize(); }, leave() { },
+  update(dt, t) {
+    const p = this.p; if (this.play) { p.t = (p.t + dt * 1.5) % 24; this.sT.set(p.t, true); }
+    const r = Sim.calc(p.t, p); const ad = r.s.al * 180 / Math.PI;
+    this.cP.set(r.P / 1000); this.cA.set(ad); this.cG.set(r.G * r.kC); this.cC.set(Math.max(0, r.cos)); this.cK.set(r.kT);
+    // дневная кривая
+    const pts = []; let E = 0, pm = 0; for (let x = 0; x <= 24; x += .1) { const q = Sim.calc(x, p).P / 1000; pts.push(q); E += q * .1; pm = Math.max(pm, q); }
+    this.cD.set(E); const homes = E / 10; this.cH.set(homes);
+    const hn = Math.min(40, Math.round(homes / Math.max(1, Math.ceil(homes / 40)))); if (hn !== this.hn) { this.hn = hn; this.homes.innerHTML = Array.from({ length: hn }, () => `<svg viewBox="0 0 24 24"><path d="M3 11 12 3l9 8v10h-6v-6H9v6H3z" fill="#4cffb0" opacity=".9"/></svg>`).join(''); }
+    const ch = this.ch; if (ch.w < 2) ch.resize(); const c = ch.ctx, cw = ch.w, chh = ch.h; ch.clear(); const sc = Math.max(pm, 1e-6);
+    c.strokeStyle = 'rgba(255,255,255,.12)'; c.lineWidth = 1; for (let k = 0; k <= 4; k++) { const x = cw * k / 4; c.beginPath(); c.moveTo(x, 0); c.lineTo(x, chh - 12); c.stroke(); c.fillStyle = 'rgba(255,255,255,.45)'; c.font = '10px sans-serif'; c.textAlign = 'center'; c.fillText(String(k * 6).padStart(2, '0') + ':00', clamp(x, 14, cw - 14), chh - 1); }
+    const X = i => i / (pts.length - 1) * cw, Y = v => (chh - 14) - v / sc * (chh - 22);
+    c.beginPath(); pts.forEach((v, i) => i ? c.lineTo(X(i), Y(v)) : c.moveTo(X(i), Y(v))); c.strokeStyle = 'rgba(255,179,64,.35)'; c.lineWidth = 1.5; c.stroke();
+    const ni = Math.round(p.t / 24 * (pts.length - 1)); const gg = c.createLinearGradient(0, 0, 0, chh); gg.addColorStop(0, 'rgba(255,179,64,.55)'); gg.addColorStop(1, 'rgba(255,179,64,0)');
+    c.beginPath(); c.moveTo(0, Y(0)); for (let i = 0; i <= ni; i++) c.lineTo(X(i), Y(pts[i])); c.lineTo(X(ni), Y(0)); c.closePath(); c.fillStyle = gg; c.fill();
+    c.beginPath(); for (let i = 0; i <= ni; i++) i ? c.lineTo(X(i), Y(pts[i])) : c.moveTo(X(i), Y(pts[i])); c.strokeStyle = C.sun; c.lineWidth = 2.5; c.shadowColor = C.sun; c.shadowBlur = 8; c.stroke(); c.shadowBlur = 0;
+    glow(c, X(ni), Y(pts[ni] || 0), 12, '#ffffff', .9); c.fillStyle = 'rgba(255,255,255,.7)'; c.textAlign = 'left'; c.fillText('max ' + fmt(pm, pm < 100 ? 1 : 0) + ' кВт', 4, 10);
+    if (!HAS3D) return this.draw2D(dt, t, r);
+    const { r: R, s: S, cam, orb } = this; fit3D(R, cam, this.v);
+    if (performance.now() - (orb.user || 0) > 3000) orb.tyaw += dt * .04;
+    orb.yaw = lerp(orb.yaw, orb.tyaw, dt * 3); orb.pitch = lerp(orb.pitch, orb.tpitch, dt * 3); orb.dist = lerp(orb.dist, orb.tdist, dt * 2);
+    cam.position.set(Math.sin(orb.yaw) * Math.cos(orb.pitch) * orb.dist, Math.sin(orb.pitch) * orb.dist + 2, Math.cos(orb.yaw) * Math.cos(orb.pitch) * orb.dist); cam.lookAt(-4, 2, 0);
+    const sv = r.s.v, el = Math.sin(r.s.al); this.sun.position.set(sv[0] * 400, sv[1] * 400, sv[2] * 400); this.dl.position.set(sv[0] * 80, Math.max(2, sv[1] * 80), sv[2] * 80);
+    const day = clamp(el * 4 + .2, 0, 1), cl = p.cloud / 100;
+    this.dl.intensity = 1.7 * clamp(el * 3, 0, 1) * (1 - .7 * cl); this.hemi.intensity = .08 + .55 * day;
+    const night = new THREE.Color(0x050816), dusk = new THREE.Color(0x6a3350), dayC = new THREE.Color(0x4a86d0), grey = new THREE.Color(0x6f7888);
+    let sky = el < 0 ? night.clone().lerp(dusk, clamp(1 + el * 6, 0, 1) * .5) : dusk.clone().lerp(dayC, clamp(el * 3, 0, 1)); sky.lerp(grey.clone().multiplyScalar(.3 + .7 * day), cl * .7);
+    S.background = sky; S.fog.color = sky; this.stars.material.opacity = clamp(-el * 5, 0, 1) * (1 - cl);
+    this.sg.material.opacity = clamp(el * 6 + .5, 0, 1) * (1 - .6 * cl); this.sun.material.color.setHSL(.09 + .04 * clamp(el * 3, 0, 1), 1, .6 + .2 * clamp(el * 2, 0, 1));
+    this.cloudM.opacity = .85 * cl; this.cloudM.color.setScalar(.25 + .75 * day); this.clouds.forEach(g => { g.visible = cl > .02; g.position.x += g.userData.v * dt * (1 + cl); if (g.position.x > 130) g.position.x = -130; });
+    const rb = p.tilt * Math.PI / 180, ra = -p.az * Math.PI / 180;
+    for (let i = 0; i < this.panels.length; i += 2) { const g = this.panels[i]; g.rotation.set(rb, ra, 0, 'YXZ'); this.panels[i + 1].scale.y = 1.1 + Math.sin(rb) * .2; }
+    this.faceM.emissiveIntensity = .5 * (pm > 0 ? r.P / 1000 / sc : 0);
+    this.wins.color.setHex(el < .05 ? 0xffc96b : 0x332a18); this.invLamp.material.color.setHex(r.P > 0 ? 0x4cffb0 : 0x553333);
+    R.render(S, cam);
+  },
+  draw2D(dt, t, r) {
+    const cv = this.cv; if (cv.w < 2) cv.resize(); const { ctx, w, h } = cv; const el = Math.sin(r.s.al), d = clamp(el * 3, 0, 1);
+    const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, `rgb(${lerp(5, 74, d)},${lerp(8, 134, d)},${lerp(22, 208, d)})`); g.addColorStop(1, '#1a2a1a'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    const sx = w / 2 + r.s.v[0] * w * .4, sy = h * .7 - el * h * .6; glow(ctx, sx, sy, 90, C.sun, .7); ctx.fillStyle = '#ffe2a0'; ctx.beginPath(); ctx.arc(sx, sy, 20, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#24331f'; ctx.fillRect(0, h * .7, w, h * .3); const b = this.p.tilt * Math.PI / 180;
+    for (let i = 0; i < 6; i++) { const x = w * .2 + i * w * .11, y = h * .7; ctx.strokeStyle = '#2a62d6'; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(x - Math.cos(b) * 30, y - 20 + Math.sin(b) * 30); ctx.lineTo(x + Math.cos(b) * 30, y - 20 - Math.sin(b) * 30); ctx.stroke(); }
+  }
+});
+
+/* =====================================================================
+   СЦЕНА 13 — Заключение: свет → электроны → ток → город
+   ===================================================================== */
+SCENES.push({
+  title: 'Заключение',
+  notes: `<p><b>Заключение.</b> Работа солнечного фотоэлемента начинается со взаимодействия фотонов с электронами кремния.</p><p>Поглощённый фотон может перевести электрон из валентной зоны в зону проводимости, оставив дырку. Внутреннее электрическое поле p-n-перехода помогает разделять носители, а контакты — собирать их. При подключении нагрузки возникает электрический ток.</p><p>Источником электрической энергии является <b>солнечный свет</b>. Полупроводник не создаёт энергию, а обеспечивает её преобразование. При этом часть энергии теряется: на <b>отражение</b>, <b>неподходящую энергию фотонов</b>, <b>термализацию</b>, <b>рекомбинацию</b> и <b>сопротивление</b>.</p><p>Поэтому преобразование солнечной энергии — это совокупность нескольких эффектов: <b>внутреннего фотоэффекта</b> и работы <b>p-n-перехода</b>. Вот как-то так. Спасибо за внимание!</p>`,
+  fix: 'Исправлено: «терми лизации» → термализация; «полупроводник не создает энергия» → полупроводник не создаёт энергию.',
+  init() {
+    const s = shell(this, { kicker: '13 · Заключение', title: 'Свет → электроны → <span class="g">ток</span> → город', pts: ['s|Всё начинается со взаимодействия <b>фотонов</b> с электронами кремния', 'e|Фотон переводит электрон из <b>валентной зоны</b> в <b>зону проводимости</b>, оставляя дырку', 'f|Поле <b>p-n-перехода</b> разделяет носители, контакты их собирают', 'e|При подключении нагрузки возникает <b>электрический ток</b>', 's|Источник энергии — <b>солнечный свет</b>; полупроводник лишь преобразует её', 'h|Потери: отражение, неподходящие фотоны, термализация, рекомбинация, сопротивление', '|Итог: <b>внутренний фотоэффект + p-n-переход</b>'] });
+    this.cv = Cv(s.visual); this.T = 0;
+    const r = el('div', 'row'); s.controls.appendChild(r); UI.button(r, { text: '↺ Повторить анимацию', kind: 'pri', onClick: () => { this.T = 0; Snd.whoosh(); } });
+    caption(s.visual, '<b>Спасибо за внимание!</b>');
+    this.bld = []; let x = 0; while (x < 1) { const bw = rnd(.035, .07); this.bld.push({ x, w: bw, h: rnd(.18, .5), seed: Math.random() * 1e4 }); x += bw + rnd(.004, .012); }
+    this.ph = []; this.es = [];
+  },
+  enter() { this.cv.resize(); this.T = 0; }, leave() { },
+  update(dt, t) {
+    const cv = this.cv; if (cv.w < 2) cv.resize(); const { ctx, w, h } = cv; cv.clear(); this.T += dt; const T = this.T;
+    const sky = ctx.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, '#060a1e'); sky.addColorStop(.7, '#1a1440'); sky.addColorStop(1, '#2a1630'); ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
+    const sx = w * .12, sy = h * .18; glow(ctx, sx, sy, 150, C.sun, .55 + .1 * Math.sin(t * 2)); ctx.fillStyle = '#ffe6a8'; ctx.beginPath(); ctx.arc(sx, sy, 34, 0, TAU); ctx.fill();
+    const px = w * .2, py = h * .74; ctx.save(); ctx.translate(px, py); ctx.transform(1, 0, -.5, .55, 0, 0); const pg = ctx.createLinearGradient(-90, -60, 90, 60); pg.addColorStop(0, '#2a62d6'); pg.addColorStop(1, '#0b2a6b'); ctx.fillStyle = pg; ctx.fillRect(-90, -70, 180, 140); ctx.strokeStyle = 'rgba(220,230,255,.4)'; ctx.lineWidth = 1.5; for (let i = -60; i <= 60; i += 30) { ctx.beginPath(); ctx.moveTo(i, -70); ctx.lineTo(i, 70); ctx.stroke(); } for (let j = -35; j <= 35; j += 35) { ctx.beginPath(); ctx.moveTo(-90, j); ctx.lineTo(90, j); ctx.stroke(); } ctx.restore();
+    const lit = clamp((T - 2.5) / 6, 0, 1); glow(ctx, px, py, 120, '#3c8cff', .25 * Math.min(1, T / 1.5));
+    if (T > .3 && Math.random() < dt * 14) this.ph.push({ t: 0, tx: px + rnd(-70, 70), ty: py + rnd(-30, 30) }); for (const p of this.ph) { p.t += dt * 1.4; const x = lerp(sx, p.tx, p.t), y = lerp(sy, p.ty, p.t); photonWave(ctx, lerp(sx, p.tx, Math.max(0, p.t - .15)), lerp(sy, p.ty, Math.max(0, p.t - .15)), x, y, C.sun, 8, 4, 2); if (p.t >= 1) { p.done = 1; if (T > 1.2) this.es.push({ s: 0 }); } } this.ph = this.ph.filter(p => !p.done);
+    // провод к городу
+    const path = [[px + 70, py], [w * .38, py], [w * .38, h * .88], [w * .97, h * .88]]; ctx.strokeStyle = 'rgba(160,180,220,.3)'; ctx.lineWidth = 4; ctx.beginPath(); path.forEach((p, i) => i ? ctx.lineTo(...p) : ctx.moveTo(...p)); ctx.stroke();
+    const tot = (path[1][0] - path[0][0]) + (path[2][1] - path[1][1]) + (path[3][0] - path[2][0]);
+    for (const e of this.es) { e.s += dt * 260; let d = e.s, x, y; if (d < path[1][0] - path[0][0]) { x = path[0][0] + d; y = py; } else if ((d -= path[1][0] - path[0][0]) < path[2][1] - path[1][1]) { x = path[1][0]; y = path[1][1] + d; } else { d -= path[2][1] - path[1][1]; x = path[2][0] + d; y = path[2][1]; } electron(ctx, x, y, 4.5, 1, false); if (e.s > tot) e.done = 1; } this.es = this.es.filter(e => !e.done).slice(-120);
+    // город
+    const cx0 = w * .42, cw = w * .56, base = h * .86;
+    for (const b of this.bld) { const bx = cx0 + b.x * cw, bw = b.w * cw, bh = b.h * h; ctx.fillStyle = '#0e1130'; ctx.fillRect(bx, base - bh, bw, bh); ctx.strokeStyle = 'rgba(255,255,255,.06)'; ctx.strokeRect(bx, base - bh, bw, bh);
+      for (let wy = base - bh + 8; wy < base - 8; wy += 12) for (let wx = bx + 5; wx < bx + bw - 6; wx += 9) { const hsh = Math.abs(Math.sin(b.seed + wx * 12.9898 + wy * 78.233)) % 1; const on = hsh < lit * .85; ctx.fillStyle = on ? (hsh < .2 ? '#ffe6a8' : '#ffc96b') : 'rgba(255,255,255,.04)'; if (on) { ctx.shadowColor = '#ffc96b'; ctx.shadowBlur = 8; } ctx.fillRect(wx, wy, 4, 6); ctx.shadowBlur = 0; } }
+    if (lit > 0) { const cg = ctx.createRadialGradient(cx0 + cw / 2, base, 0, cx0 + cw / 2, base, cw * .6); cg.addColorStop(0, `rgba(255,190,90,${.25 * lit})`); cg.addColorStop(1, 'rgba(255,190,90,0)'); ctx.fillStyle = cg; ctx.fillRect(cx0 - 40, base - h * .6, cw + 80, h * .6); }
+    ctx.fillStyle = '#05060f'; ctx.fillRect(0, base + 2, w, h - base);
+    const words = [['свет', C.sun, .2], ['электроны', C.el, 1.2], ['ток', '#d8f6ff', 2.2], ['город загорается', '#ffc96b', 3.4]]; const fs = clamp(w / 34, 14, 24); ctx.font = `800 ${fs}px ${getComputedStyle(document.body).fontFamily}`; const totW = words.reduce((a, [s]) => a + ctx.measureText(s).width + 12, 0) + 3 * fs * 1.4; let x = Math.max(w * .3, w - totW - 28); const y = h * .09;
+    words.forEach(([s, c, d], i) => { const a = clamp((T - d) / .6, 0, 1); txt(ctx, s, x, y + (1 - ease(a)) * 14, { s: fs, w: 800, c, alpha: a }); x += ctx.measureText(s).width + 12; if (i < 3) { txt(ctx, '→', x, y, { s: fs * .9, c: 'rgba(255,255,255,.4)', alpha: a }); x += fs * 1.4; } });
+    if (T > 3.4 && !this.dinged) { this.dinged = 1; Snd.ding(.75); } if (T < 1) this.dinged = 0;
+  }
+});
+</script>
+<script>
+/* =====================================================================
+   ПРИЛОЖЕНИЕ: навигация, переходы, режим докладчика, главный цикл
+   ===================================================================== */
+let cur = 0, prevI = -1, notesOpen = false; const running = new Set();
+function buildNav() {
+  const d = $('#dots'); SCENES.forEach((s, i) => { const b = el('div', 'dot', `<span></span><em>${i + 1}. ${s.title}</em>`); b.onclick = () => go(i); d.appendChild(b); });
+}
+function go(i, silent) {
+  i = clamp(i, 0, SCENES.length - 1); if (i === cur && prevI !== -1) return;
+  const dir = i > cur ? 1 : -1; const old = SCENES[cur], nw = SCENES[i];
+  if (prevI !== -1 && old !== nw) {
+    old.root.classList.remove('active', 'from-left', 'from-right'); old.root.classList.add(dir > 0 ? 'to-left' : 'to-right'); old.leave && old.leave();
+    const o = old; setTimeout(() => { if (SCENES[cur] !== o) { running.delete(o); o.root.classList.remove('to-left', 'to-right'); } }, 1000);
+  }
+  nw.root.classList.remove('to-left', 'to-right', 'active'); nw.root.classList.add(dir > 0 ? 'from-right' : 'from-left'); void nw.root.offsetWidth;
+  requestAnimationFrame(() => { nw.root.classList.remove('from-left', 'from-right'); nw.root.classList.add('active'); });
+  cur = i; prevI = i; running.add(nw); RESIZERS.forEach(f => f()); nw.enter && nw.enter();
+  const hs = nw.root.querySelectorAll('.hud .stat'); if (window.gsap && hs.length) gsap.fromTo(hs, { y: -14, opacity: 0 }, { y: 0, opacity: 1, duration: .8, stagger: .06, delay: .35, ease: 'power3.out' });
+  BG.tpx = i / (SCENES.length - 1) * 4;
+  if (!silent) Snd.whoosh();
+  [...$('#dots').children].forEach((d, k) => { d.classList.toggle('cur', k === i); d.classList.toggle('done', k < i); });
+  $('#counter').innerHTML = `<b>${i + 1}</b> / ${SCENES.length}`; $('#secname').textContent = nw.title; $('#progress').style.width = ((i + 1) / SCENES.length * 100) + '%';
+  $('#notesTxt').innerHTML = nw.notes; $('#notesN').textContent = `${i + 1} / ${SCENES.length}`; $('#notesFix').textContent = nw.fix ? '✎ ' + nw.fix : '';
+  history.replaceState(null, '', '#' + (i + 1)); if (Speech.on) Speech.say();
+}
+function toggleNotes() { notesOpen = !notesOpen; $('#notes').classList.toggle('open', notesOpen); $('#bNotes').classList.toggle('on', notesOpen); }
+function toggleFull() { const d = document; if (!d.fullscreenElement && !d.webkitFullscreenElement) { const e = d.documentElement; const pr = (e.requestFullscreen || e.webkitRequestFullscreen).call(e); pr && pr.catch && pr.catch(() => { }); } else (d.exitFullscreen || d.webkitExitFullscreen).call(d); }
+window.addEventListener('keydown', e => {
+  if (e.altKey || e.ctrlKey || e.metaKey) return; const k = e.key;
+  if (k === 'ArrowRight' || k === 'PageDown' || k === ' ' || k === 'Enter') { e.preventDefault(); go(cur + 1); }
+  else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { e.preventDefault(); go(cur - 1); }
+  else if (k === 'Home') go(0); else if (k === 'End') go(SCENES.length - 1);
+  else if (k === 'n' || k === 'N' || k === 'т' || k === 'Т') toggleNotes();
+  else if (k === 'f' || k === 'F' || k === 'а' || k === 'А') toggleFull();
+  else if (k === 'm' || k === 'M' || k === 'ь' || k === 'Ь') Snd.toggle();
+  else if (/^[1-9]$/.test(k)) go(+k - 1);
+});
+// свайпы (кроме контролов и 3D-сцен с вращением)
+let tx0 = null, ty0 = 0;
+window.addEventListener('touchstart', e => { if (e.target.closest('[data-noswipe],.drag,.info,#notes')) { tx0 = null; return; } tx0 = e.touches[0].clientX; ty0 = e.touches[0].clientY; }, { passive: true });
+window.addEventListener('touchend', e => { if (tx0 == null) return; const dx = e.changedTouches[0].clientX - tx0, dy = e.changedTouches[0].clientY - ty0; if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.3) go(cur + (dx < 0 ? 1 : -1)); tx0 = null; }, { passive: true });
+$('#prev').onclick = () => go(cur - 1); $('#next').onclick = () => go(cur + 1);
+$('#bNotes').onclick = toggleNotes; $('#bFull').onclick = toggleFull; $('#bMute').onclick = () => Snd.toggle(); $('#bSpeak').onclick = () => Speech.toggle();
+window.addEventListener('resize', () => { RESIZERS.forEach(f => f()); SEGS.forEach(f => f()); });
+document.addEventListener('visibilitychange', () => { if (Snd.ctx) document.hidden ? Snd.ctx.suspend() : Snd.on && Snd.ctx.resume(); });
+
+// запуск
+BG.init();
+SCENES.forEach(s => { try { s.init(); } catch (err) { console.error('Ошибка инициализации сцены', s.title, err); } });
+buildNav();
+const start = clamp((parseInt(location.hash.slice(1)) || 1) - 1, 0, SCENES.length - 1); cur = start; go(start, true);
+if (!HAS3D) setTimeout(() => toast('WebGL/Three.js недоступен — включён режим Canvas 2D'), 800);
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(.1, (now - last) / 1000); last = now; const t = now / 1000;
+  BG.update(dt, t); tickCounters(dt);
+  for (const s of running) { try { s.update(dt, t); } catch (err) { if (!s._err) { console.error(s.title, err); s._err = 1; } } }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

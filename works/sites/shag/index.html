@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ШАГ — обувь и одежда (демо)</title>
+<style>
+:root{
+  --accent:#4f86c6;
+  --ink:#fff;
+  --coal:#111416;
+  --display: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  --text: -apple-system, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --hand: "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive;
+  --pad: clamp(18px, 3.4vw, 60px);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--coal);color:var(--ink);font-family:var(--text);overflow:hidden;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+a{color:inherit;text-decoration:none}
+
+/* ---------- header ---------- */
+.top{position:fixed;left:0;right:0;top:0;height:84px;display:flex;align-items:center;justify-content:space-between;padding:0 var(--pad);z-index:40;pointer-events:none}
+.top>*{pointer-events:auto}
+.logo{display:flex;align-items:baseline;gap:4px;font-family:var(--display);font-size:30px;letter-spacing:.02em;line-height:1}
+.logo b{position:relative;padding:2px 8px 0;font-weight:400}
+.logo b::before,.logo b::after{content:"";position:absolute;width:10px;height:10px;border:3px solid #fff}
+.logo b::before{left:-2px;top:-4px;border-right:0;border-bottom:0}
+.logo b::after{right:-2px;bottom:-4px;border-left:0;border-top:0}
+.logo i{font-style:normal;font-family:var(--text);font-size:13px;opacity:.7;letter-spacing:.04em}
+.tabs{position:relative;display:flex;gap:2px;padding:5px;border-radius:999px;background:rgba(255,255,255,.16);backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4);border:1px solid rgba(255,255,255,.22)}
+.tabs button{position:relative;z-index:1;padding:9px 18px;border-radius:999px;font-size:14px;font-weight:600;transition:color .3s}
+.tabs button.on{color:var(--accent)}
+.tab-ind{position:absolute;top:5px;bottom:5px;left:5px;width:80px;border-radius:999px;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+.btn-order{display:flex;align-items:center;gap:10px;padding:11px 14px 11px 20px;border-radius:999px;background:#fff;color:#111;font-weight:700;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,.18);transition:transform .25s cubic-bezier(.3,1.6,.5,1)}
+.btn-order:hover{transform:scale(1.06)}
+.btn-order .ic{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;transition:background .6s}
+
+/* ---------- views ---------- */
+.view{position:absolute;inset:0;visibility:hidden;pointer-events:none;overflow:hidden}
+.view.on{visibility:visible;pointer-events:auto}
+.bg{position:absolute;inset:0;overflow:hidden}
+.bg .layer{position:absolute;inset:0}
+.bg .layer::after{content:"";position:absolute;inset:0;background:
+  radial-gradient(60% 55% at 50% 52%, rgba(255,255,255,.20), transparent 70%),
+  radial-gradient(90% 60% at 50% 115%, rgba(0,0,0,.28), transparent 70%)}
+.stage,.splat{position:absolute;inset:0}
+.splat{width:100%;height:100%;pointer-events:none}
+.stage{perspective:1400px}
+.p-wrap{position:absolute;left:50%;top:52%;width:min(38vw,56vh);aspect-ratio:1;transform-origin:50% 75%;will-change:transform}
+.p-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 28px 26px rgba(0,0,0,.28));user-select:none;-webkit-user-drag:none;pointer-events:none}
+.p-shadow{position:absolute;left:50%;top:calc(52% + min(17vw,25vh));width:min(24vw,35vh);height:min(2.6vw,3.8vh);transform-origin:50% 50%;margin-left:calc(min(24vw,35vh) / -2);border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.42),transparent);filter:blur(5px)}
+.c-item{position:absolute;left:0;top:0;transform-origin:50% 50%;will-change:transform,opacity;cursor:pointer}
+.c-item img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 30px 30px rgba(0,0,0,.3));user-select:none;-webkit-user-drag:none}
+.c-shadow{position:absolute;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.4),transparent);filter:blur(6px)}
+.hud{position:absolute;inset:0;pointer-events:none}
+.hud button,.hud a,.hud .sel{pointer-events:auto}
+
+.lbl{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;opacity:.8;margin-bottom:12px}
+.kick{font-family:var(--display);font-weight:400;font-size:clamp(34px,3.6vw,64px);line-height:.92;letter-spacing:.01em;text-transform:uppercase}
+.lead{font-size:14px;line-height:1.55;opacity:.88;max-width:300px;margin-top:18px}
+.sizes{display:flex;gap:8px;flex-wrap:wrap}
+.sizes button{width:44px;height:44px;border-radius:50%;border:1.5px solid rgba(255,255,255,.6);font-size:13px;font-weight:600;transition:background .25s,color .25s,transform .35s cubic-bezier(.3,1.7,.5,1)}
+.sizes button:hover{transform:scale(1.1)}
+.sizes button.on{background:#fff;color:var(--accent);border-color:#fff}
+.pill{display:inline-flex;align-items:center;gap:10px;padding:12px 18px;border-radius:999px;background:#fff;color:#111;font-size:14px;font-weight:700;transition:transform .3s cubic-bezier(.3,1.7,.5,1)}
+.pill:hover{transform:scale(1.06)}
+.pill.ghost{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.7)}
+.socials{display:flex;gap:16px;opacity:.9}
+.socials a{width:20px;height:20px;display:grid;place-items:center}
+.socials svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:1.8}
+
+/* ---------- shoes ---------- */
+.bigword{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:min(24vw,52vh);line-height:.8;color:#fff;user-select:none;pointer-events:none;padding-top:4vh;white-space:nowrap}
+.bigword span{display:inline-block;transform-origin:50% 100%;will-change:transform}
+.v-shoes .left{position:absolute;left:var(--pad);top:50%;transform:translateY(-50%);width:min(320px,26vw)}
+.model-line{margin-top:28px;display:flex;flex-direction:column;gap:4px;overflow:hidden}
+.m-name{font-size:13px;font-weight:600;opacity:.8;letter-spacing:.04em;text-transform:uppercase}
+.m-price{font-family:var(--display);font-size:38px;line-height:1}
+.v-shoes .right{position:absolute;right:var(--pad);top:50%;transform:translateY(-50%);width:170px;display:flex;flex-direction:column;align-items:flex-end;text-align:right}
+.swatches{display:flex;gap:12px;margin-bottom:30px}
+.swatches button{width:30px;height:30px;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 2px rgba(255,255,255,.9),0 4px 12px rgba(0,0,0,.2);transition:transform .35s cubic-bezier(.3,1.7,.5,1)}
+.swatches button:hover{transform:scale(1.15)}
+.swatches button.on{outline:2px solid #fff;outline-offset:4px}
+.v-shoes .sizes{justify-content:flex-end;max-width:160px}
+.bottom{position:absolute;left:var(--pad);right:var(--pad);bottom:28px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.mid-hint{display:flex;align-items:center;gap:14px;font-size:13px;font-weight:600}
+.mid-hint i{display:block;width:70px;height:1.5px;background:rgba(255,255,255,.6)}
+.note{position:absolute;left:58%;top:17%;width:270px;height:130px;pointer-events:none;overflow:visible}
+.note text{font-family:var(--hand);font-size:27px;fill:#fff}
+.note path{fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- clothes ---------- */
+.v-clothes .left{position:absolute;left:var(--pad);top:50%;transform:translateY(-50%);width:min(360px,28vw)}
+.arrows{display:flex;gap:8px;margin-bottom:22px}
+.arrows button{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center;transition:background .2s,transform .3s cubic-bezier(.3,1.7,.5,1)}
+.arrows button:hover{background:#fff;color:#111;transform:scale(1.1)}
+.v-clothes h2{font-size:clamp(34px,3.5vw,58px);line-height:1.02;font-weight:700;letter-spacing:-.02em}
+.v-clothes .lead{max-width:340px}
+.v-clothes .left .pill{margin-top:24px}
+.v-clothes .right{position:absolute;right:var(--pad);top:50%;transform:translateY(-58%);display:flex;flex-direction:column;align-items:flex-end;text-align:right}
+.price-now{font-size:44px;font-weight:700;letter-spacing:-.02em;line-height:1}
+.price-old{font-size:30px;font-weight:600;opacity:.75;text-decoration:line-through;margin:6px 0 26px}
+.v-clothes .sizes{justify-content:flex-end}
+.c-name{font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;opacity:.85;margin-bottom:10px}
+.caption{position:absolute;left:50%;bottom:34px;transform:translateX(-50%);text-align:center;font-size:17px;font-weight:600;line-height:1.25}
+.counter{position:absolute;left:var(--pad);bottom:72px;font-family:var(--display);font-size:22px;letter-spacing:.06em}
+.counter span{opacity:.5}
+.v-clothes .socials{position:absolute;left:var(--pad);bottom:32px}
+.next-tag{position:absolute;width:150px;height:150px;margin:-75px 0 0 -75px;border-radius:50%;pointer-events:auto;cursor:pointer}
+.next-tag::before{content:"";position:absolute;inset:6px;border-radius:50%;border:1.5px dashed rgba(255,255,255,.45);animation:spin 14s linear infinite}
+.next-tag span{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ghost-txt{position:absolute;left:50%;top:50%;transform:translate(-50%,-46%);font-family:var(--display);font-size:min(30vw,62vh);line-height:.8;color:transparent;-webkit-text-stroke:2px rgba(255,255,255,.14);white-space:nowrap;pointer-events:none;user-select:none}
+
+/* ---------- contacts ---------- */
+.v-contacts{background:var(--coal);overflow-y:auto}
+.v-contacts .wrap{min-height:100%;padding:120px var(--pad) 60px;display:grid;grid-template-columns:1.05fr 1fr;gap:clamp(24px,4vw,70px);align-items:start}
+.c-title{font-family:var(--display);font-size:clamp(56px,8.4vw,150px);line-height:.84;text-transform:uppercase;overflow:hidden}
+.c-title span{display:inline-block}
+.c-title em{font-family:Georgia,serif;font-style:italic;font-weight:400;text-transform:none;color:#ff8a3d;font-size:.62em;letter-spacing:-.02em}
+.c-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:34px}
+.c-card{padding:18px 20px;border-radius:18px;background:#1b1f22;border:1px solid #262b2f;transition:transform .35s cubic-bezier(.3,1.6,.5,1),background .3s}
+.c-card:hover{transform:translateY(-4px);background:#20262a}
+.c-card small{display:block;font-size:12px;opacity:.55;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.c-card b{font-size:17px;font-weight:600}
+form.callback{margin-top:22px;display:grid;grid-template-columns:1fr 1fr auto;gap:10px}
+.field{width:100%;padding:15px 18px;border-radius:14px;border:1px solid #2b3135;background:#171b1e;color:#fff;font:inherit;font-size:15px;outline:none;transition:border-color .2s}
+.field:focus{border-color:#ff8a3d}
+.btn-accent{padding:15px 22px;border-radius:14px;background:#ff8a3d;color:#111;font-weight:700;white-space:nowrap;transition:transform .3s cubic-bezier(.3,1.7,.5,1)}
+.btn-accent:hover{transform:scale(1.05)}
+.demo-flag{margin-top:14px;font-size:12px;opacity:.5}
+.map{position:relative;border-radius:26px;overflow:hidden;background:#e9ebec;aspect-ratio:1/1.02;box-shadow:0 30px 60px rgba(0,0,0,.35)}
+.map svg{width:100%;height:100%;display:block}
+.map .road{fill:none;stroke:#fff;stroke-linecap:round}
+.map .road.big{stroke-width:16}
+.map .road.sm{stroke-width:7}
+.map .river{fill:none;stroke:#b9d3f4;stroke-width:30;stroke-linecap:round}
+.map .block{fill:#dfe2e4}
+.map .park{fill:#cfe3c7}
+.map .metro{fill:none;stroke:#ef3340;stroke-width:4;stroke-dasharray:2 10;stroke-linecap:round}
+.map-pin{position:absolute;left:52%;top:46%;width:0;height:0}
+.map-pin .ring{position:absolute;left:-40px;top:-40px;width:80px;height:80px;border-radius:50%;border:2px solid #ff8a3d;animation:pulse 2s ease-out infinite;opacity:0}
+.map-pin .ring:nth-child(2){animation-delay:1s}
+.map-pin .head{position:absolute;left:-24px;top:-62px;width:48px;height:48px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#ff8a3d;box-shadow:0 10px 20px rgba(0,0,0,.25)}
+.map-pin .head::after{content:"";position:absolute;inset:15px;border-radius:50%;background:#111416}
+.map-pin .tag{position:absolute;left:30px;top:-74px;background:#111416;color:#fff;padding:9px 13px;border-radius:12px;font-size:13px;font-weight:600;white-space:nowrap}
+@keyframes pulse{0%{transform:scale(.3);opacity:.9}100%{transform:scale(1.6);opacity:0}}
+.map-note{position:absolute;left:8%;top:72%;font-family:var(--hand);font-size:24px;color:#2a6fe8;transform:rotate(-4deg)}
+
+/* ---------- shutter / modal / toast ---------- */
+.shutter{position:fixed;inset:0;display:flex;z-index:90;pointer-events:none}
+.shutter i{flex:1;background:var(--coal);transform:scaleY(0);transform-origin:50% 0}
+.shutter i:nth-child(3){background:#ff8a3d}
+.modal{position:fixed;inset:0;z-index:80;display:grid;place-items:center;visibility:hidden}
+.modal.on{visibility:visible}
+.modal .veil{position:absolute;inset:0;background:rgba(10,10,14,.35);opacity:0;transition:opacity .35s}
+.modal.on .veil{opacity:1}
+.glass{position:relative;width:min(440px,92vw);padding:28px;border-radius:28px;background:rgba(255,255,255,.16);backdrop-filter:blur(26px) saturate(1.7);-webkit-backdrop-filter:blur(26px) saturate(1.7);border:1px solid rgba(255,255,255,.38);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 30px 80px rgba(0,0,0,.3);transform:scale(.6);opacity:0}
+.glass h3{font-family:var(--display);font-weight:400;font-size:38px;line-height:.95;text-transform:uppercase}
+.glass .prod{margin:10px 0 18px;font-size:14px;opacity:.9}
+.glass form{display:grid;gap:10px}
+.glass .field{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.28)}
+.glass .field::placeholder{color:rgba(255,255,255,.7)}
+.glass select.field option{color:#111}
+.glass .send{margin-top:6px;padding:16px;border-radius:16px;background:#fff;color:#111;font-weight:700;font-size:15px}
+.glass .x{position:absolute;right:16px;top:16px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.18);font-size:18px}
+.glass .done{display:none;text-align:center;padding:10px 0}
+.glass .done svg{width:96px;height:96px}
+.glass .done path,.glass .done circle{fill:none;stroke:#fff;stroke-width:5;stroke-linecap:round;stroke-linejoin:round}
+.glass .done p{margin-top:12px;font-size:15px;line-height:1.5}
+.glass small{display:block;margin-top:12px;font-size:12px;opacity:.7;text-align:center}
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,calc(100% + 60px));z-index:95;background:#fff;color:#111;padding:14px 20px;border-radius:14px;font-size:14px;font-weight:600;box-shadow:0 16px 40px rgba(0,0,0,.3);transition:transform .5s cubic-bezier(.3,1.5,.5,1)}
+.toast.on{transform:translate(-50%,0)}
+.loader{position:fixed;inset:0;z-index:99;background:#4f86c6;display:grid;place-items:center;font-family:var(--display);font-size:60px;transition:opacity .5s}
+
+/* ---------- mobile ---------- */
+@media (max-width: 860px){
+  .top{height:70px}
+  .logo i{display:none}
+  .logo{font-size:22px}
+  .tabs button{padding:7px 9px;font-size:12px}
+  .btn-order span.t{display:none}
+  .btn-order{padding:8px}
+  .bigword{font-size:27vw;padding-top:0}
+  .v-shoes .left,.v-clothes .left{top:86px;transform:none;width:auto;right:var(--pad)}
+  .kick{font-size:34px}
+  .lead{display:none}
+  .model-line{margin-top:10px;flex-direction:row;align-items:baseline;gap:12px}
+  .m-price{font-size:28px}
+  .v-shoes .right{top:auto;bottom:84px;transform:none;left:var(--pad);right:var(--pad);width:auto;flex-direction:row;align-items:center;justify-content:space-between}
+  .v-shoes .right .lbl{display:none}
+  .swatches{margin:0}
+  .sizes button{width:38px;height:38px}
+  .mid-hint,.bottom .socials{display:none}
+  .bottom{justify-content:center}
+  .note{left:52%;top:30%;transform:scale(.7);transform-origin:0 0}
+  .p-wrap{width:74vw;top:50%}
+  .p-shadow{top:calc(50% + 33vw);width:50vw;height:5vw;margin-left:-25vw}
+  .v-clothes h2{font-size:30px}
+  .v-clothes .left .pill,.arrows{display:none}
+  .v-clothes .right{top:auto;bottom:80px;transform:none;left:var(--pad);right:var(--pad);flex-direction:row;align-items:center;justify-content:space-between}
+  .price-now{font-size:30px}.price-old{font-size:18px;margin:0}
+  .v-clothes .right .lbl,.c-name,.v-clothes .sizes{display:none}
+  .price-now,.price-old{white-space:nowrap}
+  .counter{bottom:auto;top:200px}
+  .v-clothes .socials{display:none}
+  .caption{font-size:14px;bottom:24px}
+  .v-contacts .wrap{grid-template-columns:1fr;padding-top:96px}
+  form.callback{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="loader" id="loader">ШАГ</div>
+
+<header class="top">
+  <a class="logo" href="#shoes" data-go="shoes"><b>ШАГ</b><i>store · demo</i></a>
+  <nav class="tabs" id="tabs">
+    <span class="tab-ind" id="tabInd"></span>
+    <button data-go="shoes" class="on">Обувь</button>
+    <button data-go="clothes">Одежда</button>
+    <button data-go="contacts">Контакты</button>
+  </nav>
+  <button class="btn-order js-order"><span class="t">Заказать</span>
+    <span class="ic"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 10L10 2M4 2h6v6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span>
+  </button>
+</header>
+
+<!-- ================= ОБУВЬ ================= -->
+<section class="view v-shoes on" data-view="shoes">
+  <div class="bg" id="shoeBg"></div>
+  <div class="bigword" id="word" aria-hidden="true"></div>
+  <canvas class="splat" id="splat"></canvas>
+  <div class="stage" id="shoeStage">
+    <div class="p-shadow" id="shoeShadow"></div>
+    <div class="p-wrap" id="shoeWrap"><img id="shoeImg" alt="Кроссовки" draggable="false"></div>
+  </div>
+  <div class="hud">
+    <div class="left">
+      <h1 class="kick">Найди<br>свой темп</h1>
+      <p class="lead">Каждая пара собрана под скорость: плотные материалы, амортизация на весь день и смелый силуэт.</p>
+      <div class="model-line"><span class="m-name" id="mName">«Взлёт» Hi</span><span class="m-price" id="mPrice">12 990 ₽</span></div>
+    </div>
+    <div class="right">
+      <div class="lbl">Модель</div>
+      <div class="swatches" id="swatches"></div>
+      <div class="lbl">Размер</div>
+      <div class="sizes" id="shoeSizes"></div>
+    </div>
+    <div class="bottom">
+      <div class="socials">
+        <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/></svg></a>
+        <a href="#" aria-label="Telegram"><svg viewBox="0 0 24 24"><path d="M21 4L3 11l6 2 2 6 3-4 5 4z"/></svg></a>
+        <a href="#" aria-label="VK"><svg viewBox="0 0 24 24"><path d="M3 7c1 6 4 10 9 10V12c2 0 4 2 5 5h3c-1-3-3-5-5-6 2-1 3-3 4-4h-3c-1 2-2 3-4 4V7h-3v6c-2 0-4-3-4-6z"/></svg></a>
+      </div>
+      <div class="mid-hint"><i></i>Выбери модель и размер<i></i></div>
+      <button class="pill js-order">Заказать эту пару <span>↗</span></button>
+    </div>
+    <svg class="note" id="note" viewBox="0 0 270 130">
+      <defs><clipPath id="noteClip"><rect id="noteRect" x="0" y="0" width="0" height="130"/></clipPath></defs>
+      <text id="noteText" x="40" y="34" clip-path="url(#noteClip)">новый дроп!</text>
+      <path id="noteArrow" d="M70 48 C 40 70, 20 92, -30 112 M-30 112 l 18 -2 M-30 112 l 8 -16"/>
+    </svg>
+  </div>
+</section>
+
+<!-- ================= ОДЕЖДА ================= -->
+<section class="view v-clothes" data-view="clothes">
+  <div class="bg" id="clothBg"></div>
+  <div class="ghost-txt" id="ghostTxt">СТИЛЬ</div>
+  <div class="stage" id="clothStage"><div class="c-shadow" id="cShadow"></div></div>
+  <div class="hud">
+    <div class="left">
+      <div class="arrows"><button id="cPrev" aria-label="Назад">‹</button><button id="cNext" aria-label="Вперёд">›</button></div>
+      <h2>Выделяйся<br>без усилий</h2>
+      <p class="lead">Куртки и свитеры на холодный сезон: плотные ткани, мягкая крупная вязка и свободный крой, который хорошо сидит.</p>
+      <button class="pill js-order" data-from="clothes">Заказать <span>→</span></button>
+    </div>
+    <div class="right">
+      <div class="c-name" id="cName">Пуховик «Апельсин»</div>
+      <div class="price-now" id="cNow">14 900 ₽</div>
+      <div class="price-old" id="cOld">19 900 ₽</div>
+      <div class="lbl">Размер</div>
+      <div class="sizes" id="clothSizes"></div>
+    </div>
+    <div class="counter" id="cCounter">01 <span>/ 03</span></div>
+    <div class="socials">
+      <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/></svg></a>
+      <a href="#" aria-label="Telegram"><svg viewBox="0 0 24 24"><path d="M21 4L3 11l6 2 2 6 3-4 5 4z"/></svg></a>
+    </div>
+    <div class="caption">Уверенность<br>в каждом шве</div>
+    <div class="next-tag" id="nextTag"><span>Далее →</span></div>
+  </div>
+</section>
+
+<!-- ================= КОНТАКТЫ ================= -->
+<section class="view v-contacts" data-view="contacts">
+  <div class="wrap">
+    <div>
+      <h2 class="c-title" id="cTitle"><span>Приходи</span><br><span>примерить</span> <em>или пиши</em></h2>
+      <div class="c-cards">
+        <a class="c-card" href="#"><small>Адрес</small><b>Москва, ул. Примерная, 12</b></a>
+        <a class="c-card" href="tel:+79000000000"><small>Телефон</small><b>+7 (900) 000-00-00</b></a>
+        <a class="c-card" href="#"><small>Telegram</small><b>@shag_store_demo</b></a>
+        <div class="c-card"><small>Часы работы</small><b>Ежедневно 10:00–22:00</b></div>
+      </div>
+      <form class="callback" id="callback">
+        <input class="field" name="name" placeholder="Имя" required>
+        <input class="field" name="phone" placeholder="Телефон" required inputmode="tel">
+        <button class="btn-accent" type="submit">Перезвоните мне</button>
+      </form>
+      <p class="demo-flag">Демоверсия сайта: формы никуда не отправляются, контакты условные.</p>
+    </div>
+    <div class="map" id="map">
+      <svg viewBox="0 0 600 612" preserveAspectRatio="xMidYMid slice">
+        <rect class="block" x="40" y="40" width="150" height="120" rx="10"/>
+        <rect class="block" x="230" y="30" width="170" height="110" rx="10"/>
+        <rect class="park" x="430" y="40" width="140" height="180" rx="18"/>
+        <rect class="block" x="40" y="200" width="120" height="150" rx="10"/>
+        <rect class="block" x="350" y="330" width="210" height="110" rx="10"/>
+        <rect class="park" x="60" y="400" width="190" height="150" rx="18"/>
+        <rect class="block" x="300" y="480" width="120" height="100" rx="10"/>
+        <path class="river" d="M-20 600 C 120 520, 180 470, 260 460 S 420 420, 620 300"/>
+        <path class="road big" d="M-10 180 L 620 180"/>
+        <path class="road big" d="M210 -10 L 210 620"/>
+        <path class="road sm" d="M-10 375 C 150 375, 260 360, 330 300 S 470 290, 620 300"/>
+        <path class="road sm" d="M420 -10 L 420 300"/>
+        <path class="road sm" d="M330 300 L 280 620"/>
+        <path class="road sm" d="M210 280 L 420 280"/>
+        <path class="metro" d="M30 90 C 160 140, 260 230, 312 282"/>
+      </svg>
+      <div class="map-pin"><span class="ring"></span><span class="ring"></span><span class="head"></span><span class="tag">ШАГ · 2 этаж</span></div>
+      <div class="map-note">5 минут от метро ↗</div>
+    </div>
+  </div>
+</section>
+
+<div class="shutter" id="shutter"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+
+<div class="modal" id="modal">
+  <div class="veil" data-close></div>
+  <div class="glass" id="glass">
+    <button class="x" data-close aria-label="Закрыть">×</button>
+    <div class="form-state">
+      <h3>Оформить<br>заказ</h3>
+      <p class="prod" id="mProd">«Взлёт» Hi · 12 990 ₽</p>
+      <form id="orderForm">
+        <select class="field" id="mSize"></select>
+        <input class="field" name="name" placeholder="Как к вам обращаться" required>
+        <input class="field" name="phone" placeholder="Телефон" required inputmode="tel">
+        <input class="field" name="city" placeholder="Город доставки">
+        <button class="send" type="submit">Отправить заявку</button>
+      </form>
+      <small>Демо: заявка не отправляется на сервер</small>
+    </div>
+    <div class="done">
+      <svg viewBox="0 0 100 100"><circle id="doneC" cx="50" cy="50" r="44"/><path id="doneP" d="M30 52 L45 66 L72 36"/></svg>
+      <p>Заявка принята!<br>В настоящем магазине мы бы перезвонили за 15 минут.</p>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+
+/* =========================================================
+   1. Мини-движок анимации
+   ========================================================= */
+const E = {
+  lin: t => t,
+  out3: t => 1 - (1 - t) ** 3,
+  in3: t => t * t * t,
+  inOut3: t => t < .5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2,
+  out5: t => 1 - (1 - t) ** 5,
+  expo: t => t === 1 ? 1 : 1 - 2 ** (-10 * t),
+  back: t => { const c = 1.9; return 1 + (c + 1) * (t - 1) ** 3 + c * (t - 1) ** 2; },
+  elastic: t => t === 0 || t === 1 ? t : 2 ** (-9 * t) * Math.sin((t * 10 - .75) * (2 * Math.PI / 3)) + 1,
+  bounce: t => { const n = 7.5625, d = 2.75;
+    if (t < 1 / d) return n * t * t; if (t < 2 / d) return n * (t -= 1.5 / d) * t + .75;
+    if (t < 2.5 / d) return n * (t -= 2.25 / d) * t + .9375; return n * (t -= 2.625 / d) * t + .984375; },
+};
+function tween({ dur = 600, delay = 0, ease = 'out3', update, done }) {
+  const h = { dead: false }; const f = E[ease]; const t0 = performance.now() + delay;
+  const step = now => {
+    if (h.dead) return;
+    if (now < t0) return requestAnimationFrame(step);
+    const t = Math.min(1, (now - t0) / dur);
+    update && update(f(t), t);
+    if (t < 1) requestAnimationFrame(step); else done && done();
+  };
+  requestAnimationFrame(step); return h;
+}
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+const q = s => document.querySelector(s);
+const qa = s => [...document.querySelectorAll(s)];
+const rub = n => Math.round(n).toLocaleString('ru-RU') + ' ₽';
+const ghost = (dx, dy, rgb = '255,255,255') => Math.hypot(dx, dy) < 1.5 ? 'none' :
+  [1, 2, 3, 4, 5].map(i => `${(dx * i * .9).toFixed(1)}px ${(dy * i * .9).toFixed(1)}px 0 rgba(${rgb},${(.3 - i * .05).toFixed(2)})`).join(',');
+
+/* =========================================================
+   2. Данные
+   ========================================================= */
+const SHOES = [
+  { img: 'img/shoe-denim.webp', word: 'ДЕНИМ', name: 'Кеды Denim Low', price: 11990, bg: '#4f86c6', sw: '#9cc0e6', rot: -2, note: 'новый дроп!', sizes: [38, 39, 40, 41, 42, 43] },
+  { img: 'img/shoe-chicago.webp', word: 'ДЕРЗКО', name: 'Хайтопы Chicago Mid', price: 14990, bg: '#d42a33', sw: '#ef4b52', rot: 12, note: 'хит сезона!', sizes: [40, 41, 42, 43, 44, 45] },
+  { img: 'img/shoe-orange.webp', word: 'ДРАЙВ', name: 'Хайтопы Orange High', price: 15990, bg: '#ef7d1a', sw: '#f7a24a', rot: 2, note: 'осталось 3 пары', sizes: [40, 41, 42, 43, 44, 45] },
+];
+const CLOTHES = [
+  { img: 'img/jacket-tobacco.webp', name: 'Куртка «Табак»', word: 'СТИЛЬ', bg: ['#a58460', '#4a3622'], now: 8900, old: 11900 },
+  { img: 'img/sweater-stripe.webp', name: 'Свитер «Леденец»', word: 'УЮТ', bg: ['#d8363e', '#6d0f15'], now: 4900, old: 6500 },
+  { img: 'img/sweater-block.webp', name: 'Свитер «Мозаика»', word: 'ТЕПЛО', bg: ['#5f84ae', '#253549'], now: 5400, old: 7200 },
+];
+const JACKETS = CLOTHES;
+const state = { view: 'shoes', shoe: 0, shoeSize: 42, jacket: 0, clothSize: 'M', modal: false };
+const preload = src => new Promise(r => { const i = new Image(); i.onload = i.onerror = () => r(i); i.src = src; });
+
+/* =========================================================
+   3. Обувь: падение, брызги, наклон за курсором
+   ========================================================= */
+const shoeView = q('.v-shoes'), shoeWrap = q('#shoeWrap'), shoeImg = q('#shoeImg'), shoeShadow = q('#shoeShadow');
+const sh = { y: -2000, sx: 1, sy: 1, rot: 0, base: 0, tx: 0, ty: 0, mx: 0, my: 0, landed: false, busy: false };
+shoeView.addEventListener('pointermove', e => { sh.mx = e.clientX / innerWidth * 2 - 1; sh.my = e.clientY / innerHeight * 2 - 1; });
+shoeView.addEventListener('pointerleave', () => { sh.mx = 0; sh.my = 0; });
+
+// большое слово
+const wordEl = q('#word'); let letters = [];
+function setWord(w) { wordEl.innerHTML = ''; letters = [...w].map(ch => { const s = document.createElement('span'); s.textContent = ch; s.dataset.ready = '0'; wordEl.appendChild(s); return s; }); fitWord(); return letters; }
+function fitWord() {
+  wordEl.style.fontSize = ''; const fs = parseFloat(getComputedStyle(wordEl).fontSize);
+  const w = letters.reduce((a, s) => a + s.offsetWidth, 0);
+  const maxW = innerWidth < 860 ? innerWidth * .92 : innerWidth - 2 * (q('.v-shoes .left').getBoundingClientRect().right + 10);
+  if (w > maxW) wordEl.style.fontSize = (fs * maxW / w).toFixed(1) + 'px';
+}
+addEventListener('resize', fitWord);
+function lettersIn() {
+  const H = innerHeight * 1.15;
+  letters.forEach((s, k) => {
+    let prev = -H; s.style.transform = `translateY(${-H}px)`;
+    tween({ dur: 820, delay: k * 45, ease: 'bounce', update: e => {
+      const y = -H * (1 - e), v = y - prev; prev = y;
+      s.style.transform = `translateY(${y.toFixed(1)}px) scale(${1 - Math.min(.12, Math.abs(v) / 900)},${1 + Math.min(.22, Math.abs(v) / 500)})`;
+      s.style.textShadow = ghost(0, -v * .55);
+    }, done: () => { s.style.textShadow = 'none'; s.style.transform = 'none'; s.dataset.ready = '1'; } });
+  });
+}
+function lettersOut() {
+  const H = innerHeight * 1.15;
+  letters.forEach((s, k) => { let prev = 0; s.dataset.ready = '0';
+    tween({ dur: 300, delay: k * 25, ease: 'in3', update: e => { const y = -H * e, v = y - prev; prev = y; s.style.transform = `translateY(${y}px) scaleY(${1 + Math.min(.3, Math.abs(v) / 300)})`; s.style.textShadow = ghost(0, -v * .6); } });
+  });
+}
+function lettersKick() {
+  letters.forEach((s, k) => { if (s.dataset.ready !== '1') return; const mid = (letters.length - 1) / 2; const amp = 22 * (1 - Math.abs(k - mid) / (mid + 1.5));
+    tween({ dur: 650, ease: 'elastic', update: e => { s.style.transform = `translateY(${(amp * (1 - e)).toFixed(1)}px) scaleY(${1 - .06 * (1 - e)})`; }, done: () => s.style.transform = 'none' }); });
+}
+
+// брызги краски
+const splat = q('#splat'), sctx = splat.getContext('2d'); let drops = [];
+function resizeSplat() { const r = shoeView.getBoundingClientRect(); const dpr = Math.min(devicePixelRatio, 2); splat.width = r.width * dpr; splat.height = r.height * dpr; sctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+addEventListener('resize', resizeSplat); resizeSplat();
+const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+function burst(x, y) {
+  splat.style.opacity = 1; const K = clamp(innerWidth / 1300, .4, 1.1);
+  for (let i = 0; i < 90; i++) {
+    const a = Math.random() * Math.PI * 2, sp = (Math.pow(Math.random(), 1.6) * 26 + 12) * K;
+    drops.push({ x, y, vx: Math.cos(a) * sp * 1.3, vy: Math.sin(a) * sp * .8 - Math.random() * 6, r: Math.random() * 2 + .4, white: Math.random() < .25, life: 1 });
+  }
+  for (let i = 0; i < 110; i++) {
+    const a = Math.random() * Math.PI * 2, rr = (Math.abs(gauss()) * 150 + 120) * K;
+    const px = x + Math.cos(a) * rr * 1.8, py = y + Math.sin(a) * rr * .8 - 40 * K;
+    setTimeout(() => { sctx.fillStyle = Math.random() < .3 ? 'rgba(255,255,255,.45)' : 'rgba(18,10,26,.35)'; sctx.beginPath(); sctx.arc(px, py, Math.random() * 1.6 + .3, 0, 7); sctx.fill(); }, 40 + Math.random() * 160);
+  }
+}
+function tickSplat() {
+  if (!drops.length) return;
+  for (const d of drops) {
+    const nx = d.x + d.vx, ny = d.y + d.vy;
+    sctx.strokeStyle = sctx.fillStyle = d.white ? 'rgba(255,255,255,.5)' : 'rgba(18,10,26,.38)';
+    sctx.lineWidth = d.r * 1.2; sctx.lineCap = 'round';
+    sctx.beginPath(); sctx.moveTo(d.x, d.y); sctx.lineTo(nx, ny); sctx.stroke();
+    d.x = nx; d.y = ny; d.vx *= .8; d.vy = d.vy * .8 + .12; d.r *= .96;
+    if (Math.hypot(d.vx, d.vy) < 1) { sctx.beginPath(); sctx.arc(d.x, d.y, d.r * 1.4 + .6, 0, 7); sctx.fill(); d.life = 0; }
+  }
+  drops = drops.filter(d => d.life > 0);
+}
+function clearSplat() { tween({ dur: 260, ease: 'in3', update: e => splat.style.opacity = 1 - e, done: () => { const r = shoeView.getBoundingClientRect(); sctx.clearRect(0, 0, r.width, r.height); drops = []; } }); }
+
+// фон-ирис
+function iris(container, paint, x, y, dur = 900) {
+  const layer = document.createElement('div'); layer.className = 'layer'; paint(layer);
+  const R = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y)) + 40;
+  layer.style.clipPath = `circle(0px at ${x}px ${y}px)`; container.appendChild(layer);
+  tween({ dur, ease: 'expo', update: e => layer.style.clipPath = `circle(${(R * e).toFixed(1)}px at ${x}px ${y}px)`,
+    done: () => { layer.style.clipPath = 'none'; while (container.children.length > 1) container.firstChild.remove(); } });
+}
+const setAccent = c => document.documentElement.style.setProperty('--accent', c);
+
+// рукописная заметка
+const noteRect = q('#noteRect'), noteArrow = q('#noteArrow'), noteEl = q('#note'), noteText = q('#noteText');
+const arrowLen = noteArrow.getTotalLength();
+function showNote(text) {
+  noteText.textContent = text; noteEl.style.opacity = 1;
+  noteArrow.style.strokeDasharray = arrowLen; noteArrow.style.strokeDashoffset = arrowLen; noteRect.setAttribute('width', 0);
+  tween({ dur: 700, ease: 'lin', update: e => noteRect.setAttribute('width', 40 + 230 * e) });
+  tween({ dur: 450, delay: 650, ease: 'inOut3', update: e => noteArrow.style.strokeDashoffset = arrowLen * (1 - e) });
+}
+function hideNote() { const o = +getComputedStyle(noteEl).opacity; tween({ dur: 200, ease: 'in3', update: e => noteEl.style.opacity = o * (1 - e) }); }
+
+// текст модели: whip
+function whipText(els, setter) {
+  els.forEach((el, k) => tween({ dur: 200, delay: k * 40, ease: 'in3', update: e => { el.style.transform = `translateX(${-70 * e}px)`; el.style.opacity = 1 - e; el.style.textShadow = ghost(14 * e, 0); } }));
+  setTimeout(() => { setter();
+    els.forEach((el, k) => tween({ dur: 650, delay: k * 50, ease: 'expo', update: e => { el.style.transform = `translateX(${-70 * (1 - e)}px)`; el.style.opacity = e; el.style.textShadow = ghost(14 * (1 - e), 0); }, done: () => el.style.textShadow = 'none' }));
+  }, 300);
+}
+
+function enterShoe(i) {
+  const s = SHOES[i]; shoeImg.src = s.img; sh.base = s.rot;
+  const H = innerHeight * 1.2;
+  sh.y = -H; sh.sx = .9; sh.sy = 1.16; sh.landed = false; sh.rot = -28;
+  setWord(s.word); lettersIn();
+  tween({ dur: 900, delay: 300, ease: 'out3', update: e => sh.rot = -28 * (1 - e) });
+  tween({ dur: 470, delay: 560, ease: 'in3', update: e => { sh.y = lerp(-H, 0, e); }, done: () => impact(s) });
+}
+function impact(s) {
+  sh.y = 0; sh.landed = true; sh.sx = 1.12; sh.sy = .84;
+  // эпицентр — за телом кроссовка, его не видно; наружу вылетают только брызги
+  const r = shoeImg.getBoundingClientRect(), vr = shoeView.getBoundingClientRect();
+  burst(r.left + r.width * .5 - vr.left, r.top + r.height * .56 - vr.top);
+  lettersKick();
+  tween({ dur: 760, ease: 'elastic', update: e => { sh.sx = lerp(1.12, 1, e); sh.sy = lerp(.84, 1, e); sh.rot = 7 * (1 - e); } });
+  setTimeout(() => showNote(s.note), 380);
+  setTimeout(() => { sh.busy = false; if (sh.pending) { const [i, f] = sh.pending; sh.pending = null; selectShoe(i, f); } }, 300);
+}
+function exitShoe() {
+  const y0 = sh.y, H = innerHeight * 1.2; sh.landed = false; hideNote();
+  tween({ dur: 380, ease: 'in3', update: e => { sh.y = lerp(y0, -H, e); sh.sy = 1 + .22 * e; sh.sx = 1 - .1 * e; sh.rot = 22 * e; } });
+  lettersOut(); clearSplat();
+}
+function selectShoe(i, from) {
+  if (sh.busy) { sh.pending = [i, from]; return; } if (i === state.shoe) return; sh.busy = true;
+  const s = SHOES[i]; state.shoe = i;
+  const r = from ? from.getBoundingClientRect() : { left: innerWidth / 2, top: innerHeight / 2, width: 0, height: 0 };
+  iris(q('#shoeBg'), l => l.style.background = s.bg, r.left + r.width / 2, r.top + r.height / 2, 1000);
+  setAccent(s.bg);
+  qa('#swatches button').forEach((b, k) => b.classList.toggle('on', k === i));
+  whipText([q('#mName'), q('#mPrice')], () => { q('#mName').textContent = s.name; q('#mPrice').textContent = rub(s.price); buildSizes(q('#shoeSizes'), s.sizes, 'shoeSize'); });
+  exitShoe(); setTimeout(() => enterShoe(i), 330);
+}
+function tickShoes(t) {
+  sh.tx = lerp(sh.tx, sh.mx * 16, .06); sh.ty = lerp(sh.ty, -sh.my * 10, .06);
+  const fl = sh.landed ? (Math.sin(t * .0017) + 1) * 9 : 0;
+  const sway = sh.landed ? Math.sin(t * .0011) * 1.6 : 0;
+  shoeWrap.style.transform = `translate(-50%,-50%) translateY(${(sh.y - fl).toFixed(1)}px) rotateY(${sh.tx.toFixed(2)}deg) rotateX(${sh.ty.toFixed(2)}deg) rotate(${(sh.base + sh.rot + sway).toFixed(2)}deg) scale(${sh.sx.toFixed(3)},${sh.sy.toFixed(3)})`;
+  const air = clamp(-sh.y / 500 + fl / 70);
+  shoeShadow.style.transform = `scale(${(1 - .45 * air).toFixed(3)})`; shoeShadow.style.opacity = (1 - air).toFixed(3);
+  tickSplat();
+}
+
+// UI обуви
+function buildSizes(box, list, key) {
+  box.innerHTML = '';
+  if (!list.includes(state[key])) state[key] = list[Math.floor(list.length / 2)];
+  list.forEach(v => { const b = document.createElement('button'); b.textContent = v; b.classList.toggle('on', v === state[key]);
+    b.onclick = () => { state[key] = v; [...box.children].forEach(c => c.classList.toggle('on', c === b));
+      tween({ dur: 500, ease: 'elastic', update: e => b.style.transform = `scale(${1 + .25 * (1 - e)})`, done: () => b.style.transform = '' }); };
+    box.appendChild(b); });
+}
+SHOES.forEach((s, i) => { const b = document.createElement('button'); b.style.setProperty('--c', s.sw); b.setAttribute('aria-label', s.name); b.classList.toggle('on', i === 0); b.onclick = () => selectShoe(i, b); q('#swatches').appendChild(b); });
+buildSizes(q('#shoeSizes'), SHOES[0].sizes, 'shoeSize');
+q('#mName').textContent = SHOES[0].name; q('#mPrice').textContent = rub(SHOES[0].price);
+q('#shoeBg').innerHTML = `<div class="layer" style="background:${SHOES[0].bg}"></div>`;
+setAccent(SHOES[0].bg);
+
+/* =========================================================
+   4. Одежда: карусель
+   ========================================================= */
+const clothView = q('.v-clothes'), clothStage = q('#clothStage'), cShadowEl = q('#cShadow');
+const items = CLOTHES.map((c, i) => {
+  const el = document.createElement('div'); el.className = 'c-item'; el.innerHTML = `<img src="${c.img}" alt="${c.name}" draggable="false">`;
+  clothStage.appendChild(el);
+  return { el, x: 0, y: 0, s: 0, r: 0, o: 0, blur: 0, i };
+});
+const cl = { C: { x: 0, y: 0 }, P: { x: 0, y: 0 }, U: { x: 0, y: 0 }, size: 400, ps: .26, busy: false, lastUser: 0, mx: 0, my: 0, tx: 0 };
+let cur = items[0], nxt = items[1];
+clothView.addEventListener('pointermove', e => { cl.mx = e.clientX / innerWidth * 2 - 1; cl.my = e.clientY / innerHeight * 2 - 1; });
+clothView.addEventListener('pointerleave', () => { cl.mx = 0; cl.my = 0; });
+function layoutClothes() {
+  const r = clothStage.getBoundingClientRect(), w = r.width, h = r.height, mob = innerWidth < 860;
+  cl.size = mob ? Math.min(w * .74, h * .4) : Math.min(h * .66, w * .36);
+  cl.C = { x: w / 2, y: h * (mob ? .5 : .53) };
+  cl.P = mob ? { x: w * .82, y: h * .755 } : { x: w * .88, y: h * .8 };
+  cl.U = { x: w * .18, y: -h * .3 };
+  items.forEach(it => { it.el.style.width = it.el.style.height = cl.size + 'px'; });
+  if (!cl.busy) { Object.assign(cur, cl.C, { s: 1, o: 1 }); Object.assign(nxt, cl.P, { s: cl.ps, o: 1 }); }
+  const sw = cl.size * .62; cShadowEl.style.width = sw + 'px'; cShadowEl.style.height = sw * .1 + 'px';
+  cShadowEl.style.left = cl.C.x - sw / 2 + 'px'; cShadowEl.style.top = cl.C.y + cl.size * .47 + 'px';
+}
+addEventListener('resize', layoutClothes);
+function paintItem(it, extraY = 0, tilt = 0) {
+  const st = it.el.style;
+  st.transform = `translate(${(it.x - cl.size / 2).toFixed(1)}px,${(it.y - cl.size / 2 + extraY).toFixed(1)}px) perspective(1200px) rotateY(${tilt.toFixed(2)}deg) rotate(${it.r.toFixed(2)}deg) scale(${it.s.toFixed(4)})`;
+  st.opacity = it.o; st.filter = it.blur > .1 ? `blur(${it.blur.toFixed(1)}px)` : '';
+  st.zIndex = it === nxt ? 3 : it === cur ? 2 : 1;
+}
+items.forEach(it => it.el.addEventListener('click', () => { if (it === nxt) goJacket(state.jacket + 1); }));
+q('#nextTag').onclick = () => goJacket(state.jacket + 1);
+q('#cNext').onclick = () => goJacket(state.jacket + 1);
+q('#cPrev').onclick = () => goJacket(state.jacket - 1);
+function paintJacketBg(l, J) { l.style.background = `radial-gradient(75% 70% at 50% 45%, ${J.bg[0]}, ${J.bg[1]})`; }
+q('#clothBg').innerHTML = '<div class="layer"></div>'; paintJacketBg(q('#clothBg .layer'), CLOTHES[0]);
+buildSizes(q('#clothSizes'), ['S', 'M', 'L', 'XL'], 'clothSize');
+q('#cName').textContent = CLOTHES[0].name; q('#cNow').textContent = rub(CLOTHES[0].now); q('#cOld').textContent = rub(CLOTHES[0].old);
+q('#ghostTxt').textContent = CLOTHES[0].word;
+
+function swapGhost(word) {
+  const gt = q('#ghostTxt');
+  tween({ dur: 260, ease: 'in3', update: e => gt.style.transform = `translate(-50%,-46%) scaleX(${1 - e})`, done: () => {
+    gt.textContent = word; tween({ dur: 900, ease: 'elastic', update: e => gt.style.transform = `translate(-50%,-46%) scaleX(${Math.max(0, e)})` }); } });
+}
+function goJacket(n, user = true) {
+  const N = CLOTHES.length; n = (n + N) % N; if (cl.busy || n === state.jacket) return; cl.busy = true;
+  if (user) cl.lastUser = performance.now();
+  const J = CLOTHES[n], inc = items[n], out = cur;
+  if (nxt !== inc) { nxt.o = 0; nxt = inc; Object.assign(inc, cl.P, { s: cl.ps, o: 1, r: 0, blur: 0 }); }
+  const sr = clothStage.getBoundingClientRect();
+  iris(q('#clothBg'), l => paintJacketBg(l, J), sr.left + cl.P.x, sr.top + cl.P.y, 1100);
+  setAccent(J.bg[0]);
+  // уходящая — вверх-влево, с ускорением и размытием
+  const o0 = { x: out.x, y: out.y }, r0 = out.r;
+  tween({ dur: 820, ease: 'in3', update: (e, t) => { out.x = lerp(o0.x, cl.U.x, e); out.y = lerp(o0.y, cl.U.y, e); out.s = 1 - .45 * e; out.r = r0 - 18 * e; out.blur = 12 * e; out.o = 1 - smooth(.4, 1, t); },
+    done: () => {
+      cur = inc;
+      const nn = items[(n + 1) % N]; nxt = nn; Object.assign(nn, cl.P, { s: 0, o: 1, r: 0, blur: 0 });
+      tween({ dur: 650, ease: 'back', update: e => nn.s = Math.max(0, cl.ps * e) });
+    } });
+  // приходящая — по дуге из превью в центр
+  const P0 = { x: inc.x, y: inc.y }, Q = { x: lerp(cl.P.x, cl.C.x, .55), y: cl.C.y - cl.size * .55 }, C = { ...cl.C };
+  nxt = inc;
+  tween({ dur: 1150, delay: 120, ease: 'inOut3', update: e => {
+    const a = (1 - e) * (1 - e), b = 2 * (1 - e) * e, c = e * e;
+    inc.x = P0.x * a + Q.x * b + C.x * c; inc.y = P0.y * a + Q.y * b + C.y * c; inc.s = lerp(cl.ps, 1, e);
+  } });
+  tween({ dur: 1400, delay: 120, ease: 'out5', update: e => inc.r = -24 * (1 - e), done: () => { cl.busy = false; } });
+  // тексты
+  const from = CLOTHES[state.jacket]; state.jacket = n;
+  whipText([q('#cName')], () => q('#cName').textContent = J.name);
+  swapGhost(J.word);
+  tween({ dur: 900, delay: 200, ease: 'out3', update: e => { q('#cNow').textContent = rub(Math.round(lerp(from.now, J.now, e) / 100) * 100); q('#cOld').textContent = rub(Math.round(lerp(from.old, J.old, e) / 100) * 100); } });
+  q('#cCounter').innerHTML = `${String(n + 1).padStart(2, '0')} <span>/ ${String(N).padStart(2, '0')}</span>`;
+  const ct = q('#cCounter'); tween({ dur: 500, ease: 'back', update: e => ct.style.transform = `translateY(${(1 - e) * 16}px)` });
+}
+function enterClothes() {
+  layoutClothes(); const y0 = cl.C.y;
+  items.forEach(it => { if (it !== cur && it !== nxt) it.o = 0; });
+  cur.o = 1; cur.x = cl.C.x; cur.r = -20;
+  tween({ dur: 900, ease: 'back', update: e => { cur.y = lerp(y0 + cl.size, y0, e); cur.s = lerp(.6, 1, e); } });
+  tween({ dur: 1300, ease: 'out5', update: e => cur.r = -20 * (1 - e) });
+  nxt.s = 0; tween({ dur: 600, delay: 500, ease: 'back', update: e => nxt.s = Math.max(0, cl.ps * e) });
+  const gt = q('#ghostTxt'); tween({ dur: 1200, ease: 'expo', update: e => gt.style.transform = `translate(-50%,-46%) scaleX(${lerp(.1, 1, e)})` });
+}
+function tickClothes(t) {
+  cl.tx = lerp(cl.tx, cl.mx * 14, .06);
+  const fl = cl.busy ? 0 : -(Math.sin(t * .0016) + 1) * 7;
+  for (const it of items) {
+    if (it === cur) paintItem(it, fl, cl.busy ? 0 : cl.tx);
+    else if (it === nxt) { paintItem(it, Math.sin(t * .002) * 4, 0); }
+    else paintItem(it);
+  }
+  const air = cl.busy ? .5 : -fl / 40; cShadowEl.style.transform = `scale(${1 - .3 * air})`; cShadowEl.style.opacity = 1 - air * .6;
+  const nt = q('#nextTag'); nt.style.left = cl.P.x + 'px'; nt.style.top = cl.P.y + 'px';
+}
+setInterval(() => { if (state.view === 'clothes' && !state.modal && performance.now() - cl.lastUser > 7000) goJacket(state.jacket + 1, false); }, 4800);
+
+/* =========================================================
+   8. Контакты
+   ========================================================= */
+function enterContacts() {
+  qa('#map .road, #map .river, #map .metro').forEach((p, k) => {
+    const L = p.getTotalLength(); const dash = p.classList.contains('metro');
+    if (!dash) { p.style.strokeDasharray = L; p.style.strokeDashoffset = L; }
+    else p.style.opacity = 0;
+    tween({ dur: 900 + k * 60, delay: 150 + k * 70, ease: 'inOut3', update: e => dash ? p.style.opacity = e : p.style.strokeDashoffset = L * (1 - e) });
+  });
+  qa('#map .block, #map .park').forEach((b, k) => { b.style.opacity = 0; tween({ dur: 400, delay: 300 + k * 60, ease: 'out3', update: e => b.style.opacity = e }); });
+  const head = q('.map-pin .head'), tag = q('.map-pin .tag');
+  let prev = -400;
+  tween({ dur: 950, delay: 900, ease: 'bounce', update: e => { const y = -400 * (1 - e); head.style.transform = `translateY(${y}px) rotate(-45deg)`; tag.style.opacity = e > .98 ? 1 : 0; prev = y; } });
+  q('.map-note').style.clipPath = 'inset(0 100% 0 0)';
+  tween({ dur: 700, delay: 1900, ease: 'lin', update: e => q('.map-note').style.clipPath = `inset(0 ${100 - 100 * e}% 0 0)` });
+  qa('#cTitle span').forEach((s, k) => { const H = 160; let prev = H;
+    tween({ dur: 700, delay: 80 + k * 90, ease: 'expo', update: e => { const y = H * (1 - e); s.style.transform = `translateY(${y}px)`; s.style.textShadow = ghost(0, (y - prev) * -.8); prev = y; }, done: () => s.style.textShadow = 'none' }); });
+  const em = q('#cTitle em'); tween({ dur: 900, delay: 400, ease: 'elastic', update: e => { em.style.display = 'inline-block'; em.style.transform = `scaleX(${e})`; em.style.transformOrigin = '0 50%'; } });
+}
+q('#callback').addEventListener('submit', e => { e.preventDefault(); e.target.reset(); toast('Демо: в настоящем магазине мы бы перезвонили за 15 минут'); });
+
+/* =========================================================
+   9. Навигация: шторка между вкладками
+   ========================================================= */
+const tabBtns = qa('#tabs button'), ind = q('#tabInd');
+function moveInd(btn, anim = true) {
+  const r = btn.getBoundingClientRect(), pr = q('#tabs').getBoundingClientRect();
+  const x1 = r.left - pr.left, w1 = r.width;
+  if (!anim) { ind.style.left = x1 + 'px'; ind.style.width = w1 + 'px'; return; }
+  const x0 = parseFloat(ind.style.left) || x1, w0 = parseFloat(ind.style.width) || w1;
+  tween({ dur: 750, ease: 'elastic', update: e => { ind.style.left = lerp(x0, x1, e) + 'px'; ind.style.width = lerp(w0, w1, e) + 'px'; } });
+}
+let switching = false;
+async function go(view) {
+  if (switching || view === state.view) return; switching = true;
+  tabBtns.forEach(b => b.classList.toggle('on', b.dataset.go === view)); moveInd(tabBtns.find(b => b.dataset.go === view));
+  const bars = qa('#shutter i');
+  bars.forEach((b, k) => { b.style.transformOrigin = '50% 0'; tween({ dur: 380, delay: k * 45, ease: 'inOut3', update: e => b.style.transform = `scaleY(${e})` }); });
+  await wait(380 + bars.length * 45);
+  qa('.view').forEach(v => v.classList.toggle('on', v.dataset.view === view));
+  state.view = view; history.replaceState(null, '', '#' + view);
+  if (view === 'shoes') { setAccent(SHOES[state.shoe].bg); sh.busy = true; letters.forEach(s => s.remove()); sctx.clearRect(0, 0, splat.width, splat.height); splat.style.opacity = 1; enterShoe(state.shoe); }
+  if (view === 'clothes') { setAccent(JACKETS[state.jacket].bg[0]); layoutClothes(); enterClothes(); }
+  if (view === 'contacts') { setAccent('#111416'); enterContacts(); }
+  bars.forEach((b, k) => { b.style.transformOrigin = '50% 100%'; tween({ dur: 420, delay: 60 + k * 45, ease: 'inOut3', update: e => b.style.transform = `scaleY(${1 - e})` }); });
+  await wait(480 + bars.length * 45); switching = false;
+}
+qa('[data-go]').forEach(b => b.addEventListener('click', e => { e.preventDefault(); go(b.dataset.go); }));
+
+/* =========================================================
+   10. Заказ (стеклянная модалка) и тост
+   ========================================================= */
+const modal = q('#modal'), glass = q('#glass');
+function openOrder(from) {
+  const inClothes = state.view === 'clothes' || from === 'clothes';
+  const item = inClothes ? JACKETS[state.jacket] : SHOES[state.shoe];
+  const sizes = inClothes ? ['S', 'M', 'L', 'XL'] : item.sizes; const cur = inClothes ? state.clothSize : state.shoeSize;
+  q('#mProd').textContent = `${item.name} · ${rub(inClothes ? item.now : item.price)}`;
+  q('#mSize').innerHTML = sizes.map(s => `<option ${s === cur ? 'selected' : ''}>Размер ${s}</option>`).join('');
+  q('.form-state').style.display = ''; q('.glass .done').style.display = 'none';
+  modal.classList.add('on'); state.modal = true;
+  tween({ dur: 700, ease: 'elastic', update: e => { glass.style.transform = `scale(${lerp(.6, 1, e)})`; glass.style.opacity = Math.min(1, e * 2); } });
+}
+function closeOrder() {
+  tween({ dur: 220, ease: 'in3', update: e => { glass.style.transform = `scale(${1 - .15 * e})`; glass.style.opacity = 1 - e; }, done: () => { modal.classList.remove('on'); state.modal = false; } });
+}
+qa('.js-order').forEach(b => b.addEventListener('click', () => openOrder(b.dataset.from)));
+qa('[data-close]').forEach(b => b.addEventListener('click', closeOrder));
+q('#orderForm').addEventListener('submit', e => {
+  e.preventDefault(); e.target.reset();
+  q('.form-state').style.display = 'none'; q('.glass .done').style.display = 'block';
+  const c = q('#doneC'), p = q('#doneP'), lc = c.getTotalLength(), lp = p.getTotalLength();
+  c.style.strokeDasharray = lc; p.style.strokeDasharray = lp; c.style.strokeDashoffset = lc; p.style.strokeDashoffset = lp;
+  tween({ dur: 600, ease: 'inOut3', update: e => c.style.strokeDashoffset = lc * (1 - e) });
+  tween({ dur: 350, delay: 450, ease: 'out3', update: e => p.style.strokeDashoffset = lp * (1 - e) });
+});
+let toastT; function toast(msg) { const t = q('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 3200); }
+addEventListener('keydown', e => {
+  if (e.key === 'Escape' && state.modal) closeOrder();
+  if (state.modal) return;
+  if (state.view === 'shoes' && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) { const i = (state.shoe + (e.key === 'ArrowRight' ? 1 : -1) + 3) % 3; selectShoe(i, qa('#swatches button')[i]); }
+  if (state.view === 'clothes' && e.key === 'ArrowRight') goJacket(state.jacket + 1);
+  if (state.view === 'clothes' && e.key === 'ArrowLeft') goJacket(state.jacket - 1);
+});
+
+/* =========================================================
+   11. Цикл и старт
+   ========================================================= */
+function loop(t) {
+  requestAnimationFrame(loop);
+  if (shoeView.classList.contains('on')) tickShoes(t);
+  if (clothView.classList.contains('on')) tickClothes(t);
+}
+requestAnimationFrame(loop);
+addEventListener('resize', () => moveInd(tabBtns.find(b => b.classList.contains('on')), false));
+
+const startView = (location.hash || '#shoes').slice(1);
+moveInd(tabBtns[0], false);
+Promise.all([...SHOES, ...CLOTHES].map(x => preload(x.img))).then(() => {
+  layoutClothes();
+  const ld = q('#loader'); ld.style.opacity = 0; setTimeout(() => ld.remove(), 500);
+  sh.busy = true; enterShoe(0);
+  if (['clothes', 'contacts'].includes(startView)) setTimeout(() => go(startView), 200);
+});
+window.__debug = { state, sh, cl, go, selectShoe, goJacket };
+</script>
+</body>
+</html>
