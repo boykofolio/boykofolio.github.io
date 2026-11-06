@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ремейки игр — под заказ</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:#0d0a1e;color:#f4f1ff;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Arial,sans-serif}
+#bg{position:fixed;inset:0;width:100%;height:100%;image-rendering:pixelated}
+.vig{position:fixed;inset:0;pointer-events:none;
+  background:radial-gradient(70% 70% at 50% 45%,transparent 40%,rgba(5,3,14,.75)),
+  repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 3px)}
+#stage{position:relative;height:100%;display:grid;grid-template-columns:1.1fr .9fr;grid-template-rows:1fr auto;align-items:center;
+  gap:4vmin;padding:6vmin 7vmin}
+.copy{position:relative;z-index:2}
+.kicker{display:inline-flex;align-items:center;gap:1.2vmin;font-size:clamp(11px,1.9vmin,18px);font-weight:700;letter-spacing:.22em;
+  color:#ffd23f;text-transform:uppercase;opacity:0}
+.kicker i{width:1.4vmin;height:1.4vmin;background:#ffd23f;box-shadow:1.4vmin 0 #ff4d6d,2.8vmin 0 #5ee7ff;margin-right:3vmin}
+.kin{display:block;font-family:Impact,Haettenschweiler,"Arial Narrow Bold","Arial Black",sans-serif;
+  text-transform:uppercase;line-height:.9;letter-spacing:.01em;white-space:nowrap}
+#t1{font-size:clamp(34px,14vmin,160px);margin-top:2.4vmin}
+#t2{font-size:clamp(34px,14vmin,160px);color:#5ee7ff}
+.kin span{display:inline-block;will-change:transform}
+#lead{margin-top:3.4vmin;font-size:clamp(13px,3vmin,28px);line-height:1.4;color:rgba(244,241,255,.82);max-width:30em;
+  clip-path:inset(0 100% 0 0)}
+#lead b{color:#fff}
+.press{margin-top:3.4vmin;font-family:"Courier New",monospace;font-weight:700;font-size:clamp(11px,2vmin,19px);color:#ffd23f;
+  letter-spacing:.08em;opacity:0}
+.press.on{animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+.screen{position:relative;z-index:2;justify-self:center;width:100%;max-width:70vmin;aspect-ratio:4/3;border-radius:2vmin;overflow:hidden;
+  background:#000;box-shadow:0 0 0 .5vmin #2a2350,0 0 0 1vmin #120e28,0 3vmin 8vmin rgba(0,0,0,.6);opacity:0;transform:scale(.6)}
+#game{width:100%;height:100%;display:block;image-rendering:pixelated}
+.stamp{position:absolute;left:50%;top:50%;z-index:3;padding:1.4vmin 2.4vmin;border:.6vmin solid #ff4d6d;border-radius:1.2vmin;
+  color:#ff4d6d;font-family:Impact,"Arial Black",sans-serif;font-size:clamp(14px,4.4vmin,48px);text-transform:uppercase;line-height:1;
+  text-align:center;background:rgba(20,6,16,.55);transform:translate(-50%,-50%) rotate(-12deg) scale(2.6);opacity:0;white-space:nowrap}
+.stamp small{display:block;font-family:-apple-system,"Segoe UI",Arial,sans-serif;font-weight:700;font-size:.34em;letter-spacing:.12em;margin-top:.6vmin}
+#note{position:relative;z-index:2;grid-column:1/-1;align-self:end;display:flex;gap:1.6vmin;align-items:center;
+  font-size:clamp(11px,2.3vmin,21px);line-height:1.4;color:rgba(244,241,255,.7);opacity:0;transform:translateY(2vmin)}
+#note svg{flex:none;width:3vmin;height:3vmin;min-width:16px;min-height:16px;color:#ff4d6d}
+
+@media (max-aspect-ratio:1/1){
+  #stage{grid-template-columns:1fr;grid-template-rows:auto auto auto;align-content:center;gap:4vmin;padding:7vmin 6vmin}
+  #t1,#t2{font-size:clamp(30px,12vw,80px)}
+  .screen{max-width:78vw}
+  #note{grid-column:auto}
+}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas><div class="vig"></div>
+<div id="stage">
+  <div class="copy">
+    <div class="kicker" id="kick"><i></i>Ремейки игр · под заказ</div>
+    <span class="kin" id="t1">Пересоберём</span>
+    <span class="kin" id="t2">любую игру</span>
+    <p id="lead">Повторим механику и геймплей любимой игры — <b>на своей графике, своём коде и с вашим брендом</b>.</p>
+    <div class="press" id="press">▶ PRESS «ЗАКАЗАТЬ»</div>
+  </div>
+  <div class="screen" id="screen"><canvas id="game" width="64" height="48"></canvas>
+    <div class="stamp" id="stamp">Не для показа<small>© права у авторов оригиналов</small></div>
+  </div>
+  <p id="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+    <span>Готовые ремейки здесь не показываем: права на оригинальные игры принадлежат их авторам. Покажем лично.</span></p>
+</div>
+<script>
+/* ---------- фон: пиксельные звёзды ---------- */
+const bg = document.getElementById('bg'), bx = bg.getContext('2d');
+let stars = [];
+function fitBg(){
+  bg.width = Math.ceil(innerWidth / 6); bg.height = Math.ceil(innerHeight / 6);
+  stars = Array.from({ length: 70 }, () => ({ x: Math.random() * bg.width, y: Math.random() * bg.height, s: Math.random() < .2 ? 2 : 1, v: .02 + Math.random() * .06, c: ['#5ee7ff', '#ffd23f', '#ff4d6d', '#8f7bff', '#ffffff'][Math.random() * 5 | 0] }));
+}
+fitBg(); addEventListener('resize', fitBg);
+
+/* ---------- «игра» за мозаикой: её нельзя показать, поэтому она пикселизирована ---------- */
+const gc = document.getElementById('game'), g = gc.getContext('2d');
+function drawGame(t){
+  const W = 64, H = 48;
+  const sky = g.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#3b2a8a'); sky.addColorStop(1, '#ff7a59');
+  g.fillStyle = sky; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#ffd23f'; g.fillRect(44, 8, 8, 8);
+  const off = (t * 12) % 64;
+  g.fillStyle = '#2a1f5c';
+  for (let i = -1; i < 4; i++){ const x = i * 24 - off * .5; g.fillRect(x, 26, 14, 14); g.fillRect(x + 4, 22, 6, 4); }
+  g.fillStyle = '#3fbf6f'; g.fillRect(0, 38, W, 10);
+  g.fillStyle = '#2b8f52'; for (let x = -off % 8; x < W; x += 8) g.fillRect(x, 38, 4, 2);
+  g.fillStyle = '#c96b2c'; const px = 30 - off; g.fillRect(((px % 80) + 80) % 80 - 8, 28, 12, 3);
+  const coinX = ((50 - off) % 70 + 70) % 70; g.fillStyle = '#ffd23f'; g.fillRect(coinX, 22 + Math.sin(t * 6) * 1.5, 2 + (Math.sin(t * 8) > 0 ? 1 : 0), 3);
+  const ex = ((70 - off * 1.4) % 80 + 80) % 80; g.fillStyle = '#ff4d6d'; g.fillRect(ex, 34, 5, 4);
+  const jump = Math.max(0, Math.sin(t * 3.2)) * 12;
+  g.fillStyle = '#ffffff'; g.fillRect(14, 32 - jump, 5, 6); g.fillStyle = '#5ee7ff'; g.fillRect(14, 30 - jump, 5, 3);
+}
+
+/* ---------- кинетическая типографика ---------- */
+const E = { out3: t => 1 - (1 - t) ** 3, in3: t => t ** 3,
+  back: t => { const c = 1.9; return 1 + (c + 1) * (t - 1) ** 3 + c * (t - 1) ** 2; },
+  bounce: t => { const n = 7.5625, d = 2.75; if (t < 1 / d) return n * t * t; if (t < 2 / d) return n * (t -= 1.5 / d) * t + .75; if (t < 2.5 / d) return n * (t -= 2.25 / d) * t + .9375; return n * (t -= 2.625 / d) * t + .984375; },
+  elastic: t => t === 0 || t === 1 ? t : 2 ** (-10 * t) * Math.sin((t * 10 - .75) * (2 * Math.PI / 3)) + 1 };
+function split(el){ const txt = el.textContent; el.innerHTML = ''; return [...txt].map(ch => { const s = document.createElement('span'); s.textContent = ch === ' ' ? ' ' : ch; el.appendChild(s); return s; }); }
+const L1 = split(document.getElementById('t1')), L2 = split(document.getElementById('t2'));
+const $ = id => document.getElementById(id);
+const tw = [];
+function tween(delay, dur, fn, ease = E.out3){ tw.push({ t0: null, delay, dur, fn, ease }); }
+
+function timeline(){
+  tw.length = 0;
+  // сброс
+  L1.concat(L2).forEach(s => { s.style.transform = 'translateY(-140%)'; s.style.opacity = 0; s.style.textShadow = 'none'; });
+  ['kick', 'press'].forEach(k => { $(k).style.opacity = 0; }); $('press').classList.remove('on');
+  $('lead').style.clipPath = 'inset(0 100% 0 0)'; $('lead').style.opacity = 1;
+  Object.assign($('screen').style, { opacity: 0, transform: 'scale(.6)' });
+  Object.assign($('stamp').style, { opacity: 0, transform: 'translate(-50%,-50%) rotate(-12deg) scale(2.6)' });
+  Object.assign($('note').style, { opacity: 0, transform: 'translateY(2vmin)' });
+  $('stage').style.transform = ''; $('stage').style.opacity = 1;
+  $('t2').style.transform = 'scaleX(.02)';
+
+  tween(100, 500, e => { $('kick').style.opacity = e; $('kick').style.transform = `translateX(${(1 - e) * -20}px)`; });
+  // «ПЕРЕСОБЕРЁМ» — буквы падают с весом и шлейфом
+  L1.forEach((s, i) => tween(350 + i * 45, 900, e => {
+    const y = (1 - e) * -140; s.style.opacity = Math.min(1, e * 4);
+    s.style.transform = `translateY(${y}%)`;
+    const v = Math.abs(y) > 4 ? Math.min(6, Math.abs(y) / 18) : 0;
+    s.style.textShadow = v ? [1, 2, 3, 4, 5].map(k => `0 ${-k * v * 3}px 0 rgba(94,231,255,${.16 - k * .025})`).join(',') : 'none';
+  }, E.bounce));
+  // «ЛЮБУЮ ИГРУ» — разворачивается из узкой полоски
+  tween(1250, 1100, e => { $('t2').style.transform = `scaleX(${Math.max(.02, e)})`; $('t2').style.transformOrigin = '0 50%';
+    L2.forEach(s => { s.style.opacity = 1; s.style.transform = 'none'; s.style.textShadow = e < .9 ? `${-(1 - e) * 30}px 0 0 rgba(94,231,255,.25),${-(1 - e) * 60}px 0 0 rgba(94,231,255,.12)` : 'none'; }); }, E.elastic);
+  tween(2100, 900, e => { $('lead').style.clipPath = `inset(0 ${(1 - e) * 100}% 0 0)`; }, E.out3);
+  // экран с игрой
+  tween(2600, 800, e => { $('screen').style.opacity = Math.min(1, e * 2); $('screen').style.transform = `scale(${.6 + .4 * e})`; }, E.back);
+  // штамп — удар без плавности, с тряской
+  tween(3700, 90, e => { $('stamp').style.opacity = 1; $('stamp').style.transform = `translate(-50%,-50%) rotate(-12deg) scale(${2.6 - 1.6 * e})`; }, t => t);
+  tween(3790, 260, e => { const k = (1 - e) * 6; $('screen').style.transform = `translate(${Math.sin(e * 40) * k}px,${Math.cos(e * 33) * k}px)`; }, t => t);
+  tween(4400, 700, e => { $('note').style.opacity = e; $('note').style.transform = `translateY(${(1 - e) * 2}vmin)`; });
+  tween(5000, 10, () => { $('press').style.opacity = 1; $('press').classList.add('on'); });
+  // уход перед повтором
+  tween(10400, 420, e => { $('stage').style.opacity = 1 - e; $('stage').style.transform = `translateX(${-e * 60}px)`; }, E.in3);
+}
+
+let start = performance.now(), loopAt = 11000;
+timeline();
+function frame(now){
+  let t = now - start;
+  if (t > loopAt){ start = now; t = 0; timeline(); }
+  for (const w of tw){
+    const p = (t - w.delay) / w.dur;
+    if (p < 0 || w.done) continue;
+    const c = Math.min(1, p); w.fn(w.ease(c)); if (c >= 1) w.done = true;
+  }
+  // фон
+  bx.fillStyle = '#0d0a1e'; bx.fillRect(0, 0, bg.width, bg.height);
+  for (const s of stars){ s.x -= s.v; if (s.x < 0) s.x += bg.width; bx.fillStyle = s.c; bx.globalAlpha = .35 + .35 * Math.sin(now / 600 + s.y); bx.fillRect(s.x | 0, s.y | 0, s.s, s.s); }
+  bx.globalAlpha = 1;
+  drawGame(now / 1000);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

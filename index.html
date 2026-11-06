@@ -345,7 +345,7 @@ const CATS = {
     { title:'Hyper Drive 3D', kind:'3D-гонка', sub:'Скоростной полёт по неоновой трассе', src:'works/games/hyper-drive.html', poster:'hyper-drive', c1:'#00b3ff', c2:'#ff2fb3' },
     { title:'Neon Snake', kind:'Аркада', sub:'Классическая змейка в неоновом стиле', src:'works/games/neon-snake.html', poster:'neon-snake', c1:'#2bff9a', c2:'#5a2bff' },
     { title:'Candy Break', kind:'Аркада', sub:'Конфетный арканоид прямо в браузере', src:'works/games/candy-break.html', poster:'candy-break', c1:'#ff8cc6', c2:'#8a5cff' },
-    /* Flock убран из публикации: персонажи и графика — из Home Sheep Home 2 (Aardman), см. README.md/06 */
+    { title:'Ремейки игр', kind:'Под заказ', sub:'Повторим механику любой игры на своей графике', src:'works/games/remakes.html', poster:'remakes', hint:'', c1:'#5ee7ff', c2:'#ff4d6d' },
   ]},
 };
 
@@ -434,7 +434,7 @@ function makeCard(item, i, cat){
   const veil = document.createElement('div'); veil.className = 'veil'; c._veil = veil;
   veil.addEventListener('click', () => goTo(i));
   c.appendChild(veil);
-  if (CATS[cat].hint){
+  if (item.hint ?? CATS[cat].hint){
     const h = document.createElement('div'); h.className = 'hint';
     h.innerHTML = `<i></i>${CATS[cat].hint}<span class="hint-more"> · или на весь экран</span>`;
     c.appendChild(h);
@@ -474,7 +474,7 @@ function mountFrame(c){
     if (c._frame !== f) return;
     f.classList.add('ready');
     if (c._prev) setTimeout(() => { if (c._frame === f) c._prev.pause(); }, 600);
-    if (c.classList.contains('is-center') && CATS[state.cat].hint){
+    if (c.classList.contains('is-center') && (c._item.hint ?? CATS[state.cat].hint)){
       c.classList.add('show-hint'); clearTimeout(c._hintOff);
       c._hintOff = setTimeout(() => c.classList.remove('show-hint'), 4200);
     }
@@ -875,7 +875,7 @@ const SHEETS = {
     <div class="stats">
       <div class="stat"><b>1–3 дня</b><span>лендинг или ролик</span></div>
       <div class="stat"><b>3 прототипа</b><span>на выбор до оплаты</span></div>
-      <div class="stat"><b>14 работ</b><span>сайты, ролики, игры</span></div>
+      <div class="stat"><b>15 работ</b><span>сайты, ролики, игры</span></div>
       <div class="stat"><b>Москва</b><span>и Жуковский — встретимся лично</span></div>
     </div>
     <h3>Во что верим</h3>
