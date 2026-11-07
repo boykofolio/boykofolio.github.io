@@ -64,7 +64,9 @@ header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16
 .btn svg{width:18px;height:18px}
 
 /* ---------- сцена с карточками ---------- */
-#stage{position:relative;min-height:0}
+#stage{position:relative;min-height:0;touch-action:pan-y}
+/* на телефоне центральный сайт не перехватывает свайпы; тап открывает его на весь экран */
+@media (pointer:coarse){#stage .card.is-center iframe{pointer-events:none}#stage .card.is-center{cursor:pointer}}
 #track{position:absolute;inset:0;z-index:1}
 .card{position:absolute;left:0;top:0;border-radius:var(--r);overflow:hidden;background:#0d0c12;cursor:pointer;
   box-shadow:0 34px 80px rgba(0,0,0,.5);will-change:transform,opacity;backface-visibility:hidden}
@@ -444,11 +446,11 @@ function makeCard(item, i, cat){
   if (item.video) c._video = v;
   c.appendChild(screen); c._screen = screen;
   const veil = document.createElement('div'); veil.className = 'veil'; c._veil = veil;
-  veil.addEventListener('click', () => goTo(i));
+  veil.addEventListener('click', () => { if (!swiped) goTo(i); });
   c.appendChild(veil);
   if (item.hint ?? CATS[cat].hint){
     const h = document.createElement('div'); h.className = 'hint';
-    h.innerHTML = `<i></i>${CATS[cat].hint}<span class="hint-more"> · или на весь экран</span>`;
+    h.innerHTML = matchMedia('(pointer:coarse)').matches ? '<i></i>Нажмите — откроется на весь экран' : `<i></i>${item.hint ?? CATS[cat].hint}<span class="hint-more"> · или на весь экран</span>`;
     c.appendChild(h);
   }
   c.addEventListener('pointerenter', () => { if (c.classList.contains('is-center')) state.hover = true; });
@@ -559,7 +561,7 @@ function run(c, frames, opts, final){
 }
 
 /* Расстановка карточек; animate — плавно, иначе мгновенно */
-function layout(animate, dir = 1){
+function layout(animate, dir = 1, fast = false){
   state.cards.forEach((c, i) => {
     const s = relSlot(i), prev = c._slot;
     c._slot = s;
@@ -572,7 +574,7 @@ function layout(animate, dir = 1){
     if (!wasCenter && s === 0) enterCenter(c, animate ? 950 : 250);
     if (!animate || prev === undefined){ if (c._anim){ c._anim.cancel(); c._anim = null; } applyStyle(c, to); return; }
     if (prev === s) return;
-    const delay = Math.max(0, (dir > 0 ? s + 2 : 2 - s)) * 28;
+    const delay = fast ? 0 : Math.max(0, (dir > 0 ? s + 2 : 2 - s)) * 28;
     if (Math.abs(s - prev) > 2){
       /* карточка улетает за край и возвращается с другой стороны */
       const exit = slotStyle(prev + Math.sign(prev)), enter = slotStyle(s + Math.sign(s));
@@ -580,11 +582,11 @@ function layout(animate, dir = 1){
       run(c, ['FROM',
         { ...exit, opacity:0, offset:.42, easing:'steps(1,end)' },
         { ...enter, opacity:0, offset:.5, easing:'cubic-bezier(.16,1,.3,1)' },
-        to], { duration:D(1000), delay, easing:'linear', fromEasing:'cubic-bezier(.55,0,1,.45)' }, to);
+        to], { duration:D(fast ? 620 : 1000), delay, easing:'linear', fromEasing:'cubic-bezier(.55,0,1,.45)' }, to);
       clearTimeout(c._zT);
       c._zT = setTimeout(() => { c.style.zIndex = String(10 - Math.abs(c._slot) * 2); }, delay + D(500));
     } else {
-      run(c, ['FROM', to], { duration:D(Math.abs(s - prev) > 1 ? 1050 : 880), delay, easing:'cubic-bezier(.77,0,.18,1)' }, to);
+      run(c, ['FROM', to], fast ? { duration:D(560), delay, easing:'cubic-bezier(.16,1,.3,1)' } : { duration:D(Math.abs(s - prev) > 1 ? 1050 : 880), delay, easing:'cubic-bezier(.77,0,.18,1)' }, to);
     }
   });
 }
@@ -643,14 +645,14 @@ function paintProgress(){
   $('#count').innerHTML = `${state.cur + 1} <span>/ ${n}</span>`;
 }
 
-function go(d){ goTo(state.cur + d, d); }
-function goTo(i, dir){
+function go(d, fast){ goTo(state.cur + d, d, fast); }
+function goTo(i, dir, fast = false){
   const n = state.cards.length;
   i = ((i % n) + n) % n;
   if (i === state.cur) return;
   if (dir === undefined){ let r = ((i - state.cur) % n + n) % n; dir = r > n/2 ? -1 : 1; }
   state.cur = i; state.elapsed = 0; state.iframeFocus = false; state.hover = false;
-  layout(true, dir);
+  layout(true, dir, fast);
   paintCaption(dir);
   paintBg();
   paintProgress();
@@ -1068,12 +1070,21 @@ addEventListener('blur', () => setTimeout(() => {
 }, 0));
 addEventListener('focus', () => { state.iframeFocus = false; });
 
-let sx = null, sy = 0;
-stage.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse'){ sx = e.clientX; sy = e.clientY; } });
-stage.addEventListener('pointerup', e => {
-  if (sx === null) return;
-  const dx = e.clientX - sx, dy = e.clientY - sy; sx = null;
-  if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.3) go(dx < 0 ? 1 : -1);
+let sx = null, sy = 0, swiped = false;
+stage.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse'){ sx = e.clientX; sy = e.clientY; swiped = false; } });
+stage.addEventListener('pointermove', e => {
+  if (sx === null || swiped) return;
+  const dx = e.clientX - sx, dy = e.clientY - sy;
+  if (Math.abs(dx) > 24 && Math.abs(dx) > Math.abs(dy) * 1.2){ swiped = true; go(dx < 0 ? 1 : -1, true); }
+});
+const endSwipe = () => { sx = null; };
+stage.addEventListener('pointerup', endSwipe);
+stage.addEventListener('pointercancel', endSwipe);
+/* тап по центральной карточке на телефоне — открыть работу на весь экран */
+stage.addEventListener('click', e => {
+  if (!matchMedia('(pointer:coarse)').matches || swiped) return;
+  const c = e.target.closest('.card.is-center');
+  if (c && !state.full) openFull();
 });
 
 function fromHash(){
