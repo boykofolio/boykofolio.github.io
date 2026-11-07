@@ -34,6 +34,10 @@ svg{display:block}
   background:linear-gradient(135deg,rgba(255,255,255,.13),rgba(255,255,255,.035) 45%,rgba(255,255,255,.085));
   -webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.42),inset 0 -1px 0 rgba(255,255,255,.08),inset 1px 0 0 rgba(255,255,255,.1),0 22px 56px rgba(0,0,0,.36)}
+@media (pointer:coarse){
+  .glass{-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(135deg,rgba(46,40,66,.94),rgba(24,20,36,.94))}
+  .hint,.full-bar,#toast{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(20,17,30,.9)}
+}
 /* ---------- каркас ---------- */
 #app{position:relative;z-index:1;height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:12px;
   padding:max(16px,env(safe-area-inset-top)) 28px max(20px,env(safe-area-inset-bottom))}
@@ -457,7 +461,13 @@ function makeCard(item, i, cat){
     h.innerHTML = matchMedia('(pointer:coarse)').matches ? '<i></i>Нажмите — откроется на весь экран' : `<i></i>${item.hint ?? CATS[cat].hint}<span class="hint-more"> · или на весь экран</span>`;
     c.appendChild(h);
   }
-  c.addEventListener('pointerenter', () => { if (c.classList.contains('is-center')) state.hover = true; });
+  c.addEventListener('pointerenter', e => {
+    if (!c.classList.contains('is-center')) return;
+    state.hover = true;
+    if (e.pointerType === 'mouse' && !c._frame && !c._item.video && !drag.wheel && !drag.snapping){
+      clearTimeout(c._mountT); c._mountT = setTimeout(() => { if (c.classList.contains('is-center')) mountFrame(c); }, 180);
+    }
+  });
   c.addEventListener('pointerleave', () => { state.hover = false; });
   c._item = item;
   return c;
@@ -599,10 +609,18 @@ function layout(animate, dir = 1, fast = false){
   });
 }
 
+const COARSE = matchMedia('(pointer:coarse)').matches;
+/* Живой сайт тяжёлый (грузится в тот же поток, что и карусель), поэтому:
+   на телефоне его в карусели нет — тап открывает работу на весь экран;
+   на компьютере он грузится, только когда курсор над центральной карточкой. */
 function enterCenter(c, wait = 950){
   if (c._video){ try { c._video.currentTime = 0; c._video.play(); } catch(e){} return; }
   clearTimeout(c._mountT);
-  c._mountT = setTimeout(() => { if (c.classList.contains('is-center')) mountFrame(c); }, wait);
+  if (COARSE){   // на телефоне — подсказка «нажмите», живой сайт откроется на весь экран
+    if (c.querySelector('.hint')){ clearTimeout(c._hintOff); c._mountT = setTimeout(() => { if (c.classList.contains('is-center')){ c.classList.add('show-hint'); c._hintOff = setTimeout(() => c.classList.remove('show-hint'), 3800); } }, 900); }
+    return;
+  }
+  c._mountT = setTimeout(() => { if (c.classList.contains('is-center') && c.matches(':hover')) mountFrame(c); }, wait);
 }
 function leaveCenter(c){
   c.classList.remove('show-hint'); clearTimeout(c._hintOff);
@@ -1167,14 +1185,26 @@ const endDrag = e => {
 stage.addEventListener('pointerup', endDrag);
 stage.addEventListener('pointercancel', endDrag);
 /* тачпад: горизонтальная прокрутка двумя пальцами */
-let wheelT = 0;
+let wheelT = 0, wheelLockT = 0, wheelLocked = false, wheelRaw = 0;
+const lockWheel = () => { wheelLocked = true; clearTimeout(wheelLockT); wheelLockT = setTimeout(() => { wheelLocked = false; }, 260); };
 function wheelX(dx){
   if (state.sheet || state.full) return;
-  if (!drag.wheel){ drag.wheel = true; beginDrag(); }
-  drag.pos += dx / stepPx();
-  sample(); scheduleRender();
+  if (wheelLocked){ lockWheel(); return; }            // хвост инерции после свайпа — игнорируем
+  if (!drag.wheel){ drag.wheel = true; beginDrag(); wheelRaw = 0; }
+  wheelRaw += dx / stepPx();
+  const a = Math.abs(wheelRaw), sg = Math.sign(wheelRaw);
+  const eased = a < .5 ? a : .5 + (a - .5) * .28;     // дальше тянется всё туже
+  drag.pos = drag.pos0 + sg * Math.min(eased, 2.1);
+  scheduleRender();
   clearTimeout(wheelT);
-  wheelT = setTimeout(() => { drag.wheel = false; release(); }, 120);
+  wheelT = setTimeout(endWheel, 140);
+}
+function endWheel(){
+  drag.wheel = false;
+  const d = drag.pos - drag.pos0, a = Math.abs(d);
+  const steps = a < .1 ? 0 : (a > 1.45 ? 2 : 1);      // через карточку — только очень длинный/резкий жест
+  lockWheel();
+  snapTo(Math.round(drag.pos0) + Math.sign(d) * steps);
 }
 function onWheel(e){
   if (Math.abs(e.deltaX) <= Math.abs(e.deltaY) || Math.abs(e.deltaX) < 1) return;
