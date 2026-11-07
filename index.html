@@ -8,8 +8,8 @@
 <meta property="og:title" content="Вадим Бойко — сайты, motion и видео для YouTube">
 <meta property="og:description" content="Лендинги за 1–3 рабочих дня, Shorts, Reels, заставки и вставки для YouTube, браузерные игры.">
 <meta name="theme-color" content="#09080d">
-<link rel="icon" type="image/png" href="img/favicon.png">
-<link rel="apple-touch-icon" href="img/avatar-og.jpg">
+<link rel="icon" type="image/png" sizes="64x64" href="img/favicon-round.png?v=3">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png?v=3">
 <meta property="og:image" content="img/avatar-og.jpg">
 <style>
 :root{
@@ -19,7 +19,7 @@
   --inout:cubic-bezier(.77,0,.18,1); --expo:cubic-bezier(.16,1,.3,1); --in3:cubic-bezier(.55,0,1,.45);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--font);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none;background:var(--bg);color:var(--ink);font-family:var(--font);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 a{color:inherit;text-decoration:none}
 svg{display:block}
@@ -256,7 +256,7 @@ header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16
 <div id="app">
   <header>
     <a class="brand" href="#sites" aria-label="На главную">
-      <img class="logo" src="img/avatar.webp" alt="Вадим Бойко" width="40" height="40">
+      <img class="logo" src="img/avatar.webp?v=3" alt="Вадим Бойко" width="40" height="40">
       <span><b id="brandName">Вадим Бойко</b><small id="brandRole">сайты · motion · YouTube · Shorts</small></span>
     </a>
     <nav class="tabs glass" role="tablist" aria-label="Разделы">
@@ -396,15 +396,17 @@ function geom(){
   return { W, H, cx:r.width/2, cy, xs:k.map(v => v*W), vw, vh: vw/aspect, scale: W/vw, portrait, mobile };
 }
 
+const lerpArr = (arr, a) => { a = Math.max(0, Math.min(arr.length - 1, a)); const i = Math.min(arr.length - 2, Math.floor(a)); return arr[i] + (arr[i + 1] - arr[i]) * (a - i); };
+/* s может быть дробным — карточка между слотами (когда её тянут пальцем) */
 function slotStyle(s){
   const g = state.g, a = Math.min(Math.abs(s), 3), sg = Math.sign(s);
-  const x = sg * g.xs[a];
-  const sc = [1, .8, .64, .52][a];
-  const rot = sg * [0, 16, 24, 30][a];
-  const z = -[0, 110, 220, 330][a];
+  const x = sg * lerpArr(g.xs, a);
+  const sc = lerpArr([1, .8, .64, .52], a);
+  const rot = sg * lerpArr([0, 16, 24, 30], a);
+  const z = -lerpArr([0, 110, 220, 330], a);
   return {
-    transform:`perspective(1600px) translate3d(${x.toFixed(1)}px,0,${z}px) rotateY(${rot}deg) scale(${sc})`,
-    opacity: a >= 3 ? 0 : 1,
+    transform:`perspective(1600px) translate3d(${x.toFixed(1)}px,0,${z.toFixed(1)}px) rotateY(${rot.toFixed(2)}deg) scale(${sc.toFixed(4)})`,
+    opacity: a <= 2 ? 1 : Math.max(0, 1 - (a - 2) * 2),
   };
 }
 const VEIL = [0, .38, .58, .75];
@@ -478,12 +480,16 @@ function whenReady(f, cb){
     poll();
   });
 }
+function forwardWheel(f){
+  try { f.contentWindow.addEventListener('wheel', onWheel, { passive:false }); } catch(e){}
+}
 function mountFrame(c){
   if (c._frame || c._item.video || !c.isConnected || state.full) return;
   const f = document.createElement('iframe');
   f.src = c._item.src; f.title = c._item.title; f.setAttribute('allow', 'autoplay; fullscreen');
   sizeFrame(f);
   c._screen.appendChild(f); c._frame = f;
+  f.addEventListener('load', () => forwardWheel(f));
   whenReady(f, () => {
     if (c._frame !== f) return;
     f.classList.add('ready');
@@ -606,7 +612,7 @@ function leaveCenter(c){
 let lastT = performance.now();
 function tick(t){
   const dt = Math.min(64, t - lastT); lastT = t;
-  const paused = state.userPaused || state.hover || state.iframeFocus || state.sheet || state.full || document.hidden;
+  const paused = state.userPaused || state.hover || state.iframeFocus || state.sheet || state.full || document.hidden || drag.on || drag.snapping || drag.wheel;
   if (!paused){
     state.elapsed += dt;
     if (state.elapsed >= CONFIG.autoplayMs){ state.elapsed = 0; go(1); }
@@ -1070,16 +1076,110 @@ addEventListener('blur', () => setTimeout(() => {
 }, 0));
 addEventListener('focus', () => { state.iframeFocus = false; });
 
-let sx = null, sy = 0, swiped = false;
-stage.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse'){ sx = e.clientX; sy = e.clientY; swiped = false; } });
-stage.addEventListener('pointermove', e => {
-  if (sx === null || swiped) return;
-  const dx = e.clientX - sx, dy = e.clientY - sy;
-  if (Math.abs(dx) > 24 && Math.abs(dx) > Math.abs(dy) * 1.2){ swiped = true; go(dx < 0 ? 1 : -1, true); }
+/* =====================================================================
+   Перетаскивание: карточки идут за пальцем (и за двумя пальцами на тачпаде),
+   после отпускания доезжают до ближайшей; длинный жест листает несколько
+   ===================================================================== */
+let swiped = false;
+const drag = { id:null, on:false, wheel:false, snapping:false, axis:null, x0:0, y0:0, pos0:0, pos:0, samples:[], raf:0, rafMove:0 };
+const stepPx = () => (state.g && state.g.xs[1]) || 220;
+const relF = (i, pos) => { const n = state.cards.length; let r = ((i - pos) % n + n) % n; if (r > n / 2) r -= n; return r; };
+function renderAt(pos){
+  const n = state.cards.length;
+  state.cards.forEach((c, i) => {
+    const r = relF(i, pos), a = Math.min(3, Math.abs(r));
+    if (c._anim){ c._anim.cancel(); c._anim = null; }
+    applyStyle(c, slotStyle(r));
+    c.style.zIndex = String(100 - Math.round(a * 20));
+    c._veil.style.transition = 'none';
+    c._veil.style.opacity = lerpArr(VEIL, a);
+  });
+  const near = ((Math.round(pos) % n) + n) % n;
+  if (near !== state.cur){
+    let d = ((near - state.cur) % n + n) % n; const dir = d > n / 2 ? -1 : 1;
+    state.cur = near; paintCaption(dir); paintBg(); paintProgress();
+  }
+}
+function scheduleRender(){ if (!drag.rafMove) drag.rafMove = requestAnimationFrame(() => { drag.rafMove = 0; renderAt(drag.pos); }); }
+function beginDrag(){
+  if (drag.snapping){ cancelAnimationFrame(drag.raf); drag.snapping = false; drag.pos0 = drag.pos; }
+  else drag.pos0 = drag.pos = state.cur;
+  drag.samples = [];
+  state.cards.forEach(c => c.classList.remove('show-hint'));
+}
+function sample(){ const t = performance.now(); drag.samples.push({ p:drag.pos, t }); while (drag.samples.length > 2 && t - drag.samples[0].t > 120) drag.samples.shift(); }
+function release(){
+  let v = 0; const sm = drag.samples;
+  if (sm.length >= 2){ const a = sm[0], b = sm[sm.length - 1]; if (b.t > a.t) v = (b.p - a.p) / (b.t - a.t); }
+  if (performance.now() - (sm.length ? sm[sm.length - 1].t : 0) > 90) v = 0;   // палец остановился — без инерции
+  const base = Math.round(drag.pos0);
+  let target = Math.round(drag.pos + v * 200);
+  if (target === base && Math.abs(drag.pos - drag.pos0) > .12 && Math.abs(v) > .0008) target = base + Math.sign(drag.pos - drag.pos0);
+  target = Math.max(base - 6, Math.min(base + 6, target));
+  snapTo(target);
+}
+function snapTo(target){
+  const from = drag.pos, dist = Math.abs(target - from);
+  const dur = D(Math.min(620, 240 + 170 * dist)), t0 = performance.now();
+  cancelAnimationFrame(drag.raf); drag.snapping = true;
+  const step = now => {
+    const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+    drag.pos = from + (target - from) * e; renderAt(drag.pos);
+    if (p < 1) drag.raf = requestAnimationFrame(step); else { drag.snapping = false; commitAt(target); }
+  };
+  drag.raf = requestAnimationFrame(step);
+}
+function commitAt(target){
+  const n = state.cards.length, i = ((target % n) + n) % n;
+  if (i !== state.cur){ state.cur = i; paintCaption(1); paintBg(); }
+  state.elapsed = 0; state.iframeFocus = false;
+  state.cards.forEach(c => { c._veil.style.transition = ''; });
+  layout(false); paintProgress();
+  history.replaceState(null, '', '#' + state.cat + (i ? '/' + (i + 1) : ''));
+}
+/* палец / стилус */
+stage.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'mouse' || drag.id !== null || state.sheet || state.full) return;
+  drag.id = e.pointerId; drag.x0 = e.clientX; drag.y0 = e.clientY; drag.axis = null; swiped = false;
 });
-const endSwipe = () => { sx = null; };
-stage.addEventListener('pointerup', endSwipe);
-stage.addEventListener('pointercancel', endSwipe);
+stage.addEventListener('pointermove', e => {
+  if (e.pointerId !== drag.id) return;
+  const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
+  if (!drag.axis){
+    if (Math.hypot(dx, dy) < 6) return;
+    drag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+    if (drag.axis !== 'x') return;
+    drag.on = true; swiped = true; beginDrag();
+    drag.x0 = e.clientX;                          // без рывка на первые пиксели
+    try { stage.setPointerCapture(e.pointerId); } catch(err){}
+  }
+  if (drag.axis !== 'x') return;
+  drag.pos = drag.pos0 - (e.clientX - drag.x0) / stepPx();
+  sample(); scheduleRender();
+});
+const endDrag = e => {
+  if (e.pointerId !== drag.id) return;
+  drag.id = null;
+  if (drag.on){ drag.on = false; release(); }
+};
+stage.addEventListener('pointerup', endDrag);
+stage.addEventListener('pointercancel', endDrag);
+/* тачпад: горизонтальная прокрутка двумя пальцами */
+let wheelT = 0;
+function wheelX(dx){
+  if (state.sheet || state.full) return;
+  if (!drag.wheel){ drag.wheel = true; beginDrag(); }
+  drag.pos += dx / stepPx();
+  sample(); scheduleRender();
+  clearTimeout(wheelT);
+  wheelT = setTimeout(() => { drag.wheel = false; release(); }, 120);
+}
+function onWheel(e){
+  if (Math.abs(e.deltaX) <= Math.abs(e.deltaY) || Math.abs(e.deltaX) < 1) return;
+  e.preventDefault();
+  wheelX(e.deltaX * (e.deltaMode === 1 ? 16 : 1));
+}
+stage.addEventListener('wheel', onWheel, { passive:false });
 /* тап по центральной карточке на телефоне — открыть работу на весь экран */
 stage.addEventListener('click', e => {
   if (!matchMedia('(pointer:coarse)').matches || swiped) return;
