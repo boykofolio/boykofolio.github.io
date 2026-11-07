@@ -38,6 +38,9 @@ svg{display:block}
   .glass{-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(135deg,rgba(46,40,66,.94),rgba(24,20,36,.94))}
   .hint,.full-bar,#toast{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(20,17,30,.9)}
 }
+/* под подписью и подсказкой играет видео — живое размытие там пересчитывалось бы каждый кадр */
+.caption.glass{-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(135deg,rgba(48,42,70,.92),rgba(22,19,34,.92))}
+.hint{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:rgba(14,12,22,.82)!important}
 /* ---------- каркас ---------- */
 #app{position:relative;z-index:1;height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:12px;
   padding:max(16px,env(safe-area-inset-top)) 28px max(20px,env(safe-area-inset-bottom))}
@@ -85,7 +88,7 @@ header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16
 .card video::-webkit-media-controls-overlay-play-button,.mini video::-webkit-media-controls-overlay-play-button,
 .card video::-webkit-media-controls-panel,.mini video::-webkit-media-controls-panel{display:none!important;-webkit-appearance:none;opacity:0}
 @keyframes kb{from{transform:scale(1.01)}to{transform:scale(1.12) translate3d(-1.5%,-2.5%,0)}}
-.card .screen{position:absolute;inset:0;overflow:hidden;border-radius:inherit;-webkit-mask-image:-webkit-radial-gradient(white,black);transform:translateZ(0)}
+.card .screen{position:absolute;inset:0;overflow:hidden;border-radius:inherit;isolation:isolate}
 .card iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;pointer-events:none;background:transparent;opacity:0;transition:opacity .5s}
 .card iframe.ready{opacity:1}
 .card.is-center iframe{pointer-events:auto}
@@ -519,13 +522,26 @@ function unmountFrame(c){
   c._frame.remove(); c._frame = null;
 }
 
+/* Играют только видимые превью: на телефоне — центр и соседи, на компьютере — все пять */
+function shouldPlay(c){
+  const lim = innerWidth < 760 ? 1 : 2;
+  return Math.abs(c._slot ?? 0) <= lim && !(c._frame && c._frame.classList.contains('ready')) && !state.sheet && !state.full;
+}
+function syncVideos(){
+  state.cards.forEach(c => {
+    const v = c._prev; if (!v || !v.isConnected) return;
+    if (shouldPlay(c)){ if (v.paused) v.play().catch(() => armKick()); }
+    else if (!v.paused) v.pause();
+  });
+}
 /* Все превью раздела стартуют вместе: ждём, пока догрузятся (максимум 1,6 с), потом запускаем разом */
 function startTogether(cards){
   const vids = cards.map(c => c._prev).filter(Boolean);
   let done = false;
   const go = () => {
     if (done) return; done = true;
-    vids.forEach(v => { if (!v.isConnected) return; try { v.currentTime = 0; } catch(e){} v.play().catch(() => armKick()); });
+    vids.forEach(v => { if (!v.isConnected) return; try { v.currentTime = 0; } catch(e){} });
+    syncVideos();
   };
   let left = vids.length;
   vids.forEach(v => {
@@ -536,7 +552,7 @@ function startTogether(cards){
 }
 /* если браузер не дал автозапуск (режим энергосбережения и т. п.) — запускаем при первом касании */
 let kickArmed = false;
-function kickAll(){ state.cards.forEach(c => { if (c._prev && c._prev.paused && !c._frame && !state.sheet && !state.full) c._prev.play().catch(() => {}); }); }
+function kickAll(){ syncVideos(); }
 function armKick(){
   if (kickArmed) return; kickArmed = true;
   const k = () => { kickAll(); ['pointerdown','touchstart','keydown','scroll'].forEach(e => removeEventListener(e, k, true)); kickArmed = false; };
@@ -607,6 +623,7 @@ function layout(animate, dir = 1, fast = false){
       run(c, ['FROM', to], fast ? { duration:D(560), delay, easing:'cubic-bezier(.16,1,.3,1)' } : { duration:D(Math.abs(s - prev) > 1 ? 1050 : 880), delay, easing:'cubic-bezier(.77,0,.18,1)' }, to);
     }
   });
+  syncVideos();
 }
 
 const COARSE = matchMedia('(pointer:coarse)').matches;
@@ -707,15 +724,15 @@ function paintCaption(dir = 1, first){
   if (first || reduce){ fillCaption(); return; }
   if (capText._a) capText._a.cancel();
   const out = capText.animate([
-    { transform:'translateX(0)', opacity:1, filter:'blur(0)' },
-    { transform:`translateX(${-dir*36}px)`, opacity:0, filter:'blur(6px)' }],
+    { transform:'translateX(0)', opacity:1 },
+    { transform:`translateX(${-dir*36}px)`, opacity:0 }],
     { duration:200, easing:'cubic-bezier(.55,0,1,.45)', fill:'forwards' });
   capText._a = out;
   out.onfinish = () => {
     fillCaption();
     capText._a = capText.animate([
-      { transform:`translateX(${dir*56}px)`, opacity:0, filter:'blur(8px)' },
-      { transform:'translateX(0)', opacity:1, filter:'blur(0)' }],
+      { transform:`translateX(${dir*56}px)`, opacity:0 },
+      { transform:'translateX(0)', opacity:1 }],
       { duration:620, easing:'cubic-bezier(.16,1,.3,1)', fill:'forwards' });
   };
 }
@@ -825,7 +842,7 @@ function closeFull(){
   const c = state.cards[state.cur], r = c.getBoundingClientRect();
   const done = () => {
     full.classList.remove('on'); fullHolder.innerHTML = '';
-    if (!state.sheet) state.cards.forEach(k => k._prev && !k._frame && k._prev.play().catch(() => {}));
+    if (!state.sheet) syncVideos();
     if (c.classList.contains('is-center')) enterCenter(c, 200);
   };
   if (reduce) return done();
@@ -1044,7 +1061,7 @@ function closeSheet(){
   sheet.animate([{ transform:'translate(-50%,0)' }, { transform:'translate(-50%,112%)' }],
     { duration:D(420), easing:'cubic-bezier(.55,0,1,.45)', fill:'forwards' })
     .onfinish = () => { if (!state.sheet){ sheet.style.visibility = 'hidden'; sheetBody.innerHTML = ''; } };
-  if (!state.full) state.cards.forEach(k => k._prev && !k._frame && k._prev.play().catch(() => {}));
+  if (!state.full) syncVideos();
 }
 document.addEventListener('click', e => {
   const o = e.target.closest('[data-open]'); if (o){ openSheet(o.dataset.open); return; }
@@ -1140,10 +1157,10 @@ function release(){
 }
 function snapTo(target){
   const from = drag.pos, dist = Math.abs(target - from);
-  const dur = D(Math.min(620, 240 + 170 * dist)), t0 = performance.now();
+  const dur = D(Math.min(360, 170 + 110 * dist)), t0 = performance.now();
   cancelAnimationFrame(drag.raf); drag.snapping = true;
   const step = now => {
-    const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+    const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 4);
     drag.pos = from + (target - from) * e; renderAt(drag.pos);
     if (p < 1) drag.raf = requestAnimationFrame(step); else { drag.snapping = false; commitAt(target); }
   };
@@ -1174,38 +1191,38 @@ stage.addEventListener('pointermove', e => {
     try { stage.setPointerCapture(e.pointerId); } catch(err){}
   }
   if (drag.axis !== 'x') return;
-  drag.pos = drag.pos0 - (e.clientX - drag.x0) / stepPx();
-  sample(); scheduleRender();
+  drag.pos = drag.pos0 + tight((drag.x0 - e.clientX) / stepPx());
+  scheduleRender();
 });
 const endDrag = e => {
   if (e.pointerId !== drag.id) return;
   drag.id = null;
-  if (drag.on){ drag.on = false; release(); }
+  if (drag.on){ drag.on = false; endGesture(); }
 };
 stage.addEventListener('pointerup', endDrag);
 stage.addEventListener('pointercancel', endDrag);
 /* тачпад: горизонтальная прокрутка двумя пальцами */
+/* Палец и тачпад ведут себя одинаково: тянется туго, обычный свайп = одна карточка,
+   от края до края экрана (или очень длинный жест) = через одну */
+const tight = raw => { const a = Math.abs(raw), e = a < .5 ? a : .5 + (a - .5) * .5; return Math.sign(raw) * Math.min(e, 2.1); };
+function endGesture(){
+  const d = drag.pos - drag.pos0, a = Math.abs(d);
+  const steps = a < .08 ? 0 : (a > 1.05 ? 2 : 1);
+  snapTo(Math.round(drag.pos0) + Math.sign(d) * steps);
+}
 let wheelT = 0, wheelLockT = 0, wheelLocked = false, wheelRaw = 0;
 const lockWheel = () => { wheelLocked = true; clearTimeout(wheelLockT); wheelLockT = setTimeout(() => { wheelLocked = false; }, 260); };
 function wheelX(dx){
   if (state.sheet || state.full) return;
   if (wheelLocked){ lockWheel(); return; }            // хвост инерции после свайпа — игнорируем
   if (!drag.wheel){ drag.wheel = true; beginDrag(); wheelRaw = 0; }
-  wheelRaw += dx / stepPx();
-  const a = Math.abs(wheelRaw), sg = Math.sign(wheelRaw);
-  const eased = a < .5 ? a : .5 + (a - .5) * .28;     // дальше тянется всё туже
-  drag.pos = drag.pos0 + sg * Math.min(eased, 2.1);
+  wheelRaw += dx / (stepPx() * 2.2);
+  drag.pos = drag.pos0 + tight(wheelRaw);
   scheduleRender();
   clearTimeout(wheelT);
   wheelT = setTimeout(endWheel, 140);
 }
-function endWheel(){
-  drag.wheel = false;
-  const d = drag.pos - drag.pos0, a = Math.abs(d);
-  const steps = a < .1 ? 0 : (a > 1.45 ? 2 : 1);      // через карточку — только очень длинный/резкий жест
-  lockWheel();
-  snapTo(Math.round(drag.pos0) + Math.sign(d) * steps);
-}
+function endWheel(){ drag.wheel = false; lockWheel(); endGesture(); }
 function onWheel(e){
   if (Math.abs(e.deltaX) <= Math.abs(e.deltaY) || Math.abs(e.deltaX) < 1) return;
   e.preventDefault();
