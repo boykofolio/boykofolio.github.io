@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Brightway School</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#2f5bff;--ink:#101225;--paper:#f4f2ec;--y:#ffd23f;--pink:#ff6fa8;--mint:#3ddc97}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--blue)}
+body{font-family:Manrope,sans-serif;color:var(--ink);background:var(--blue);padding:14px;overflow-x:hidden}
+.frame{background:var(--paper);border-radius:28px;overflow:hidden;position:relative}
+/* HERO */
+.hero{position:relative;height:calc(100vh - 28px);min-height:560px}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block}
+nav{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:26px 34px;z-index:3;font-weight:600;font-size:15px}
+nav .logo{font-family:Unbounded;font-weight:700;font-size:18px;display:flex;gap:10px;align-items:center}
+nav .logo i{width:14px;height:14px;border-radius:50%;background:var(--blue);display:inline-block}
+nav .links{display:flex;gap:30px}
+nav .cta{background:var(--ink);color:#fff;padding:12px 22px;border-radius:99px}
+.title{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none;z-index:2}
+.title .tag{font-weight:800;letter-spacing:.2em;font-size:12px;text-transform:uppercase;background:#fff;padding:8px 16px;border-radius:99px;box-shadow:0 6px 24px #0001;margin-bottom:22px}
+.title h1{font-family:Unbounded;font-weight:900;font-size:clamp(46px,8.4vw,150px);line-height:.9;letter-spacing:-.04em}
+.title h1 .b{color:var(--blue)}
+.title p{margin-top:22px;font-size:clamp(15px,1.3vw,20px);max-width:520px;font-weight:600;opacity:.75}
+.scrollhint{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);font-size:12px;font-weight:800;letter-spacing:.2em;z-index:2;opacity:.6}
+/* MARQUEE */
+.marq{background:var(--blue);color:#fff;overflow:hidden;padding:26px 0;transform:rotate(-2deg) scale(1.05);margin:40px 0}
+.marq .row{display:flex;white-space:nowrap;font-family:Unbounded;font-weight:900;font-size:clamp(40px,6vw,96px);will-change:transform}
+.marq .row span{padding-right:.6em}
+.marq .row span:nth-child(even){color:transparent;-webkit-text-stroke:2px #fff}
+/* STATEMENT */
+.statement{padding:16vh 8vw;font-family:Unbounded;font-weight:700;font-size:clamp(30px,4.6vw,76px);line-height:1.08;letter-spacing:-.03em}
+.statement .w{display:inline-block;opacity:.12}
+.statement em{font-style:normal;color:var(--blue)}
+/* COURSES horizontal */
+.courses{height:100vh;position:relative;overflow:hidden}
+.courses h2{position:absolute;top:8vh;left:8vw;font-family:Unbounded;font-size:clamp(28px,3.4vw,56px);font-weight:900;letter-spacing:-.03em}
+.track{position:absolute;top:22vh;left:0;display:flex;gap:28px;padding-left:8vw;will-change:transform}
+.card{width:min(420px,78vw);height:62vh;border-radius:30px;padding:34px;display:flex;flex-direction:column;justify-content:space-between;flex:none;position:relative;overflow:hidden}
+.card .big{font-family:Unbounded;font-weight:900;font-size:150px;line-height:.8;position:absolute;right:-10px;bottom:-14px;opacity:.18}
+.card h3{font-family:Unbounded;font-size:30px;font-weight:700;letter-spacing:-.02em}
+.card ul{list-style:none;font-weight:600;line-height:1.9}
+.card .price{font-family:Unbounded;font-weight:900;font-size:44px}
+.card .price small{font-size:15px;font-weight:500;opacity:.7}
+.card .btn{align-self:flex-start;background:var(--ink);color:#fff;padding:14px 24px;border-radius:99px;font-weight:800}
+.c1{background:var(--blue);color:#fff}.c1 .btn{background:#fff;color:var(--ink)}
+.c2{background:var(--y)}.c3{background:var(--pink)}.c4{background:var(--mint)}.c5{background:var(--ink);color:#fff}.c5 .btn{background:var(--blue)}
+/* NUMBERS */
+.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding:12vh 8vw}
+.num{border-top:2px solid var(--ink);padding-top:20px}
+.num b{font-family:Unbounded;font-weight:900;font-size:clamp(50px,7vw,120px);display:block;letter-spacing:-.04em}
+.num:nth-child(2) b{color:var(--blue)}
+.num span{font-weight:600;opacity:.7}
+/* STEPS */
+.steps{padding:6vh 8vw 14vh}
+.steps h2{font-family:Unbounded;font-size:clamp(28px,3.4vw,56px);font-weight:900;margin-bottom:50px;letter-spacing:-.03em}
+.step{display:flex;align-items:center;gap:40px;padding:30px 0;border-bottom:1px solid #0002;overflow:hidden}
+.step .n{font-family:Unbounded;font-weight:900;font-size:64px;color:var(--blue);width:140px}
+.step .t{font-family:Unbounded;font-weight:700;font-size:clamp(22px,2.4vw,38px)}
+.step .d{margin-left:auto;max-width:340px;opacity:.7;font-weight:600}
+/* CTA */
+.final{background:var(--blue);color:#fff;border-radius:28px;margin:0 14px 14px;padding:16vh 8vw;text-align:center;position:relative;overflow:hidden}
+.final h2{font-family:Unbounded;font-weight:900;font-size:clamp(44px,8vw,140px);line-height:.92;letter-spacing:-.04em}
+.final .btn{display:inline-block;margin-top:44px;background:#fff;color:var(--ink);font-weight:800;font-size:20px;padding:22px 44px;border-radius:99px}
+.final .circ{position:absolute;border-radius:50%;background:#ffffff14}
+footer{display:flex;justify-content:space-between;padding:30px 34px;font-weight:600;font-size:14px;opacity:.6}
+@media(max-width:800px){nav .links{display:none}.nums{grid-template-columns:1fr}.step .d{display:none}}
+</style>
+</head>
+<body>
+<div class="frame">
+  <section class="hero">
+    <canvas id="gl"></canvas>
+    <nav>
+      <div class="logo"><i></i><span data-co>Brightway School</span></div>
+      <div class="links"><span>Курсы</span><span>Преподаватели</span><span>Цены</span><span>Отзывы</span></div>
+      <div class="cta">Записаться</div>
+    </nav>
+    <div class="title">
+      <div class="tag">Онлайн-школа английского</div>
+      <h1 id="h1">Brightway<br><span class="b">School</span></h1>
+      <p>Курсы, репетиторы и живые занятия. Учиться легко, если учиться в удовольствие.</p>
+    </div>
+    <div class="scrollhint">SCROLL ↓</div>
+  </section>
+
+  <div class="marq"><div class="row" id="mq"><span>LEARN</span><span>SPEAK</span><span>GROW</span><span>READ</span><span>LEARN</span><span>SPEAK</span><span>GROW</span><span>READ</span></div></div>
+
+  <section class="statement" id="st">Мы учим не по учебнику, а по жизни: <em>разговоры,</em> фильмы, путешествия и работа. Первый результат уже через <em>месяц.</em></section>
+
+  <section class="courses" id="courses">
+    <h2>Выбери свой курс</h2>
+    <div class="track" id="track">
+      <div class="card c1"><div><h3>Английский<br>с нуля</h3></div><ul><li>· 24 урока</li><li>· Мини-группа до 6 человек</li><li>· Разговорный клуб</li></ul><div><div class="price">4 900 ₽<small> / мес</small></div><br><div class="btn">Записаться</div></div><div class="big">A1</div></div>
+      <div class="card c2"><div><h3>Разговорный<br>английский</h3></div><ul><li>· 16 живых занятий</li><li>· Носитель языка</li><li>· Без домашки</li></ul><div><div class="price">6 500 ₽<small> / мес</small></div><br><div class="btn">Записаться</div></div><div class="big">B1</div></div>
+      <div class="card c3"><div><h3>Подготовка<br>к ЕГЭ и ОГЭ</h3></div><ul><li>· Разбор всех заданий</li><li>· Пробные экзамены</li><li>· Гарантия баллов</li></ul><div><div class="price">7 900 ₽<small> / мес</small></div><br><div class="btn">Записаться</div></div><div class="big">90+</div></div>
+      <div class="card c4"><div><h3>Личный<br>репетитор</h3></div><ul><li>· 1 на 1 с преподавателем</li><li>· Удобное время</li><li>· План под цель</li></ul><div><div class="price">1 500 ₽<small> / урок</small></div><br><div class="btn">Записаться</div></div><div class="big">1:1</div></div>
+      <div class="card c5"><div><h3>IELTS<br>и бизнес</h3></div><ul><li>· Для работы и учёбы</li><li>· Письмо и интервью</li><li>· Сертификат</li></ul><div><div class="price">9 900 ₽<small> / мес</small></div><br><div class="btn">Записаться</div></div><div class="big">C1</div></div>
+    </div>
+  </section>
+
+  <section class="nums">
+    <div class="num"><b data-n="12000">0</b><span>учеников уже с нами</span></div>
+    <div class="num"><b data-n="98" data-s="%">0</b><span>доходят до конца курса</span></div>
+    <div class="num"><b data-n="140">0</b><span>преподавателей и носителей</span></div>
+  </section>
+
+  <section class="steps">
+    <h2>Как всё устроено</h2>
+    <div class="step"><div class="n">01</div><div class="t">Пробный урок бесплатно</div><div class="d">Знакомимся, определяем уровень и цель.</div></div>
+    <div class="step"><div class="n">02</div><div class="t">Личная программа</div><div class="d">Только то, что нужно именно тебе.</div></div>
+    <div class="step"><div class="n">03</div><div class="t">Занятия онлайн</div><div class="d">Из дома, с работы, из поездки.</div></div>
+    <div class="step"><div class="n">04</div><div class="t">Результат и сертификат</div><div class="d">Говоришь свободно и уверенно.</div></div>
+  </section>
+</div>
+
+<section class="final" id="final">
+  <div class="circ" style="width:500px;height:500px;left:-120px;top:-160px"></div>
+  <div class="circ" style="width:340px;height:340px;right:-80px;bottom:-120px"></div>
+  <h2>Начни учиться<br>уже сегодня</h2>
+  <div class="btn">Записаться на пробный урок</div>
+</section>
+<footer style="color:#fff"><span data-co>Brightway School</span><span>© 2026</span></footer>
+
+<script src="letters.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.min.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+import {mergeVertices} from 'three/addons/utils/BufferGeometryUtils.js';
+
+/* ---------- hidden keys: F = fullscreen, G = paste company name ---------- */
+function setCo(t){
+  t=(t||'').trim(); if(!t) return;
+  document.querySelectorAll('[data-co]').forEach(e=>e.textContent=t);
+  const w=t.split(/\s+/); const last=w.length>1?w.pop():'';
+  document.getElementById('h1').innerHTML=w.join(' ')+(last?'<br><span class="b">'+last+'</span>':'');
+  document.title=t;
+}
+addEventListener('keydown',async e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey) return;
+  if(e.code==='KeyF'){document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}
+  else if(e.code==='KeyG'){let t='';try{t=await navigator.clipboard.readText()}catch(_){t=prompt('Название:')||''}setCo(t)}
+});
+
+/* ---------- 3D letters ---------- */
+const canvas=document.getElementById('gl'), hero=canvas.parentElement;
+const renderer=new THREE.WebGLRenderer({canvas,antialias:devicePixelRatio<2,alpha:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.0;
+const scene=new THREE.Scene();
+const pm=new THREE.PMREMGenerator(renderer);
+scene.environment=pm.fromScene(new RoomEnvironment(),0.04).texture;
+const cam=new THREE.PerspectiveCamera(35,1,0.1,100); cam.position.set(0,0,14);
+// soft key light only for gentle shading, env does the rest
+const key=new THREE.DirectionalLight(0xffffff,0.45); key.position.set(-3,5,6); scene.add(key);
+
+const raw=Uint8Array.from(atob(LETTERS.data),c=>c.charCodeAt(0)).buffer;
+const geos={};
+for(const [n,vo,vc,io,ic] of LETTERS.meta){
+  let g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(raw,vo,vc*3),3));
+  g.setIndex(new THREE.BufferAttribute(new Uint16Array(raw,io,ic),1));
+  g=mergeVertices(g,1e-4); g.computeVertexNormals();
+  geos[n]=g;
+}
+const palette=[0x7d98ff,0xffe08a,0xffaecb,0x9fe6c4,0xffc29a,0xbfaeff,0x8fb0ff,0xfdf6ea];
+const mats=palette.map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.72,metalness:0,envMapIntensity:.75}));
+
+const word='ABCDEFGHIJKLMNOPQRSTUVWXYZ', letters=[];
+const COUNT=innerWidth<800?24:40;
+let W=10,H=6;
+function slot(i){ // ring layout around title, leaves center free
+  const a=i/COUNT*Math.PI*2+ (Math.random()-.5)*.25;
+  const r=.62+Math.random()*.42;
+  return new THREE.Vector3(Math.cos(a)*W*.5*r,Math.sin(a)*H*.5*r*1.05,(Math.random()-.5)*3);
+}
+function layout(){
+  const vh=2*Math.tan(THREE.MathUtils.degToRad(cam.fov/2))*cam.position.z;
+  H=vh; W=vh*cam.aspect;
+}
+function resize(){
+  const w=hero.clientWidth,h=hero.clientHeight;
+  renderer.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); layout();
+  letters.forEach(l=>l.home.copy(slot(l.i)));
+}
+resize();
+for(let i=0;i<COUNT;i++){
+  const m=new THREE.Mesh(geos[word[i%26]],mats[i%mats.length]);
+  const s=.9+Math.random()*.9; m.scale.setScalar(s);
+  const home=slot(i);
+  m.position.copy(home).multiplyScalar(2.2);
+  m.rotation.set((Math.random()-.5)*.8,(Math.random()-.5)*1.2,(Math.random()-.5)*.8);
+  scene.add(m);
+  letters.push({m,i,home,vel:new THREE.Vector3(),spin:new THREE.Vector3(),rot0:m.rotation.clone(),ph:Math.random()*6.28,s,sw:(Math.random()*2-1)*1.1,sz:Math.random()*1.6-.4,sr:Math.random()<.5?-1:1});
+}
+addEventListener('resize',resize);
+
+const mouse=new THREE.Vector2(9,9), mw=new THREE.Vector3(), mPrev=new THREE.Vector3(), plane=new THREE.Plane(new THREE.Vector3(0,0,1),0), ray=new THREE.Raycaster();
+hero.addEventListener('pointermove',e=>{const r=hero.getBoundingClientRect();mouse.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1)});
+hero.addEventListener('pointerleave',()=>mouse.set(9,9));
+
+let visible=true, scrollK=0;
+new IntersectionObserver(([e])=>visible=e.isIntersecting).observe(hero);
+const clock=new THREE.Clock(), tmp=new THREE.Vector3();
+function tick(){
+  requestAnimationFrame(tick);
+  if(!visible) return;
+  const dt=Math.min(clock.getDelta(),.033), t=clock.elapsedTime;
+  ray.setFromCamera(mouse,cam); ray.ray.intersectPlane(plane,mw);
+  const mv=tmp.subVectors(mw,mPrev).length(); mPrev.copy(mw);
+  const R=2.5;
+  for(const l of letters){
+    const p=l.m.position;
+    // spring home + idle float
+    const tx=l.home.x, ty=l.home.y+Math.sin(t*.8+l.ph)*.15, tz=l.home.z;
+    l.vel.x+=(tx-p.x)*2*dt; l.vel.y+=(ty-p.y)*2*dt; l.vel.z+=(tz-p.z)*2*dt;
+    // mouse repel
+    const dx=p.x-mw.x, dy=p.y-mw.y, d=Math.hypot(dx,dy);
+    if(d<R&&mouse.x<5){
+      const f=(1-d/R)**2*(16+mv*55)*dt/(d+.001);
+      l.vel.x+=(dx-dy*l.sw)*f; l.vel.y+=(dy+dx*l.sw)*f; l.vel.z+=f*l.sz;
+      l.spin.x+=-dy*f*.5*l.sr; l.spin.y+=dx*f*.5; l.spin.z+=f*l.sw*.6;
+    }
+    l.vel.multiplyScalar(1-2.4*dt);
+    p.addScaledVector(l.vel,dt);
+    // rotation spring
+    const r=l.m.rotation;
+    l.spin.x+=(l.rot0.x-r.x)*3*dt; l.spin.y+=(l.rot0.y+Math.sin(t*.5+l.ph)*.25-r.y)*3*dt; l.spin.z+=(l.rot0.z-r.z)*3*dt;
+    l.spin.multiplyScalar(1-2.6*dt);
+    r.x+=l.spin.x*dt; r.y+=l.spin.y*dt; r.z+=l.spin.z*dt;
+  }
+  // scroll: letters drift apart & camera pushes in
+  cam.position.z=14-scrollK*4; cam.position.y=-scrollK*1.5;
+  renderer.render(scene,cam);
+}
+tick();
+
+/* ---------- scroll motion ---------- */
+gsap.registerPlugin(ScrollTrigger);
+ScrollTrigger.create({trigger:hero,start:'top top',end:'bottom top',scrub:true,onUpdate:s=>scrollK=s.progress});
+gsap.to('.title',{yPercent:-40,opacity:0,scale:.92,ease:'none',scrollTrigger:{trigger:hero,start:'top top',end:'bottom top',scrub:true}});
+gsap.from('.title .tag,.title h1,.title p',{y:60,opacity:0,duration:1.2,stagger:.12,ease:'expo.out',delay:.2});
+gsap.from(letters.map(l=>l.m.scale),{x:0,y:0,z:0,duration:1.4,stagger:.02,ease:'back.out(2)',delay:.1});
+
+// marquee driven by scroll
+gsap.fromTo('#mq',{xPercent:0},{xPercent:-35,ease:'none',scrollTrigger:{trigger:'.marq',start:'top bottom',end:'bottom top',scrub:true}});
+
+// statement: words light up
+const st=document.getElementById('st');
+st.innerHTML=st.innerHTML.replace(/(<em>.*?<\/em>|[^\s<]+)/g,'<span class="w">$1</span>');
+gsap.to('#st .w',{opacity:1,stagger:.1,ease:'none',scrollTrigger:{trigger:st,start:'top 75%',end:'bottom 45%',scrub:true}});
+
+// horizontal courses
+const track=document.getElementById('track');
+gsap.to(track,{x:()=>-(track.scrollWidth-innerWidth+innerWidth*.08),ease:'none',
+  scrollTrigger:{trigger:'#courses',start:'top top',end:()=>'+='+track.scrollWidth,pin:true,scrub:.6,invalidateOnRefresh:true}});
+gsap.from('.card',{y:120,rotate:i=>[-6,4,-3,5,-4][i],opacity:0,stagger:.08,duration:1,ease:'expo.out',scrollTrigger:{trigger:'#courses',start:'top 70%'}});
+
+// counters
+document.querySelectorAll('[data-n]').forEach(el=>{
+  const o={v:0},n=+el.dataset.n,s=el.dataset.s||'';
+  gsap.to(o,{v:n,duration:2,ease:'power3.out',scrollTrigger:{trigger:el,start:'top 85%'},onUpdate:()=>el.textContent=Math.round(o.v).toLocaleString('ru-RU')+s});
+});
+gsap.from('.num',{y:80,opacity:0,stagger:.12,duration:1,ease:'expo.out',scrollTrigger:{trigger:'.nums',start:'top 80%'}});
+
+// steps slide in
+document.querySelectorAll('.step').forEach(s=>gsap.from(s.children,{xPercent:-30,opacity:0,stagger:.08,duration:1,ease:'expo.out',scrollTrigger:{trigger:s,start:'top 85%'}}));
+
+// final CTA zoom
+gsap.from('.final h2',{scale:.6,opacity:0,ease:'expo.out',scrollTrigger:{trigger:'#final',start:'top 80%',end:'top 30%',scrub:true}});
+gsap.to('.final .circ',{scale:1.6,ease:'none',scrollTrigger:{trigger:'#final',start:'top bottom',end:'bottom top',scrub:true}});
+</script>
+</body>
+</html>

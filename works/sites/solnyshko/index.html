@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Школа «Солнышко»</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#FFD9BF;--ink:#C2531B;--soft:#FFE9DA;--dark:#2B1A12}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--dark);font-family:Manrope,system-ui,sans-serif;overflow-x:hidden;transition:background .9s cubic-bezier(.6,0,.2,1)}
+h1,h2,h3,.u{font-family:Unbounded,system-ui,sans-serif}
+a{color:inherit;text-decoration:none}
+
+/* NAV */
+nav{position:fixed;inset:0 0 auto 0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:22px 4vw}
+.logo{display:flex;align-items:center;gap:10px;font-family:Unbounded;font-weight:700;font-size:18px}
+.logo i{width:34px;height:34px;border-radius:50%;background:var(--ink);display:grid;place-items:center;color:#fff;font-style:normal;transition:background .9s;animation:spin 12s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.menu{display:flex;gap:28px;font-weight:700;font-size:15px}
+.menu a{opacity:.75;transition:opacity .2s}.menu a:hover{opacity:1}
+.btn{display:inline-flex;align-items:center;gap:10px;background:var(--dark);color:#fff;padding:14px 24px;border-radius:99px;font-weight:800;font-size:15px;border:0;cursor:pointer;transition:transform .25s cubic-bezier(.3,1.6,.5,1)}
+.btn:hover{transform:scale(1.06)}
+.btn.alt{background:#fff;color:var(--dark)}
+
+/* HERO */
+.hero{position:relative;height:100vh;min-height:640px;overflow:hidden}
+.blob{position:absolute;border-radius:50%;background:var(--soft);transition:background .9s;will-change:transform}
+.b1{width:46vw;height:46vw;left:27vw;top:16vh}
+.b2{width:9vw;height:9vw;left:9vw;top:20vh}
+.b3{width:5vw;height:5vw;right:12vw;top:26vh}
+.star{position:absolute;color:#fff;font-size:42px;opacity:.9;animation:float 5s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-16px) rotate(20deg)}}
+.big{position:absolute;left:0;right:0;top:50%;transform:translateY(-58%);text-align:center;font-family:Unbounded;font-weight:900;font-size:clamp(70px,14.5vw,260px);line-height:.9;letter-spacing:-.04em;color:#fff;white-space:nowrap;pointer-events:none}
+.big span{display:inline-block}
+.big.small{font-size:clamp(50px,10vw,190px)}
+.tagline{position:absolute;left:0;right:0;top:21vh;text-align:center;font-family:Unbounded;font-weight:700;font-size:clamp(14px,1.4vw,22px);letter-spacing:.3em;text-transform:uppercase;color:var(--ink);transition:color .9s}
+.tagline b{display:inline-block}
+.kid{position:absolute;bottom:-1vh;left:50%;height:97vh;transform:translateX(-50%);z-index:2;filter:drop-shadow(0 4px 6px rgba(0,0,0,.18)) drop-shadow(0 30px 45px rgba(0,0,0,.28)) drop-shadow(40px 50px 60px rgba(0,0,0,.18));will-change:transform}
+.floor{position:absolute;left:50%;bottom:0;width:34vw;height:7vh;transform:translate(-50%,40%);border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.35),transparent);z-index:1;filter:blur(6px)}
+.school{position:absolute;left:50%;top:12vh;transform:translateX(-50%);z-index:5;font-family:Unbounded;font-weight:900;font-size:clamp(22px,2.6vw,44px);background:#fff;padding:14px 34px;border-radius:99px;box-shadow:0 14px 40px rgba(0,0,0,.12);white-space:nowrap;display:none}
+.school span{display:inline-block}
+.info{position:absolute;left:4vw;bottom:7vh;z-index:5;max-width:330px}
+.info .age{display:inline-block;background:#fff;padding:8px 16px;border-radius:99px;font-weight:800;font-size:13px;margin-bottom:14px}
+.info h3{font-size:26px;line-height:1.1;margin-bottom:10px}
+.info p{font-size:15px;opacity:.75;margin-bottom:18px;line-height:1.45}
+.ctrl{position:absolute;right:4vw;bottom:7vh;z-index:5;display:flex;align-items:center;gap:14px}
+.count{font-family:Unbounded;font-weight:700;font-size:15px;margin-right:8px}
+.count b{font-size:34px}
+.arr{width:64px;height:64px;border-radius:50%;border:0;background:#fff;font-size:24px;cursor:pointer;transition:transform .25s cubic-bezier(.3,1.6,.5,1),background .2s}
+.arr:hover{transform:scale(1.12);background:var(--dark);color:#fff}
+.dots{position:absolute;left:50%;bottom:3vh;transform:translateX(-50%);display:flex;gap:8px;z-index:5}
+.dots i{width:8px;height:8px;border-radius:9px;background:rgba(0,0,0,.2);transition:width .4s,background .4s}
+.dots i.on{width:34px;background:var(--dark)}
+
+/* MARQUEE */
+.marq{overflow:hidden;padding:26px 0;background:var(--dark);color:#fff;transform:rotate(-2deg);margin:40px -2vw;width:104vw}
+.marq div{display:flex;gap:50px;white-space:nowrap;font-family:Unbounded;font-weight:900;font-size:clamp(30px,4vw,60px);animation:mq 22s linear infinite;width:max-content}
+.marq em{font-style:normal;color:var(--bg);transition:color .9s}
+@keyframes mq{to{transform:translateX(-50%)}}
+
+section{padding:120px 6vw;position:relative}
+.kicker{font-weight:800;letter-spacing:.2em;text-transform:uppercase;font-size:13px;color:var(--ink);margin-bottom:18px;transition:color .9s}
+h2{font-size:clamp(36px,5vw,84px);line-height:1;letter-spacing:-.03em;margin-bottom:50px}
+h2 .w{display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.08em}
+h2 .w span{display:inline-block;transform:translateY(110%);transition:transform .9s cubic-bezier(.2,.9,.1,1)}
+.in h2 .w span{transform:none}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.stat{background:rgba(255,255,255,.55);border-radius:32px;padding:34px 28px;transform:translateY(60px) scale(.9);opacity:0;transition:all .9s cubic-bezier(.2,1.3,.4,1)}
+.in .stat{transform:none;opacity:1}
+.stat:nth-child(2){transition-delay:.1s}.stat:nth-child(3){transition-delay:.2s}.stat:nth-child(4){transition-delay:.3s}
+.num{font-family:Unbounded;font-weight:900;font-size:clamp(46px,5.5vw,96px);letter-spacing:-.04em;line-height:1;display:flex;height:1em;overflow:hidden}
+.num .col{display:flex;flex-direction:column;transition:transform 1.8s cubic-bezier(.2,.8,.1,1)}
+.num .col span{height:1em;line-height:1;text-align:center}
+.stat p{margin-top:16px;font-weight:700;opacity:.7}
+.bar{height:10px;border-radius:9px;background:rgba(0,0,0,.08);margin-top:18px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--ink);border-radius:9px;transition:width 2s cubic-bezier(.2,.8,.1,1) .4s,background .9s}
+
+/* COURSES */
+.courses{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.card{position:relative;border-radius:34px;padding:30px;min-height:330px;overflow:hidden;background:#fff;opacity:0;transform:translateY(80px) rotate(3deg);transition:opacity .8s,transform .9s cubic-bezier(.2,1.2,.4,1);cursor:pointer}
+.in .card{opacity:1;transform:none}
+.card:hover{transform:translateY(-10px) rotate(-1.5deg)!important}
+.card .ic{width:70px;height:70px;border-radius:22px;display:grid;place-items:center;font-size:36px;margin-bottom:24px;transition:transform .5s cubic-bezier(.3,1.8,.5,1)}
+.card:hover .ic{transform:rotate(-12deg) scale(1.15)}
+.card h3{font-size:24px;margin-bottom:10px}
+.card p{opacity:.7;line-height:1.5}
+.card .pr{position:absolute;left:30px;bottom:28px;font-family:Unbounded;font-weight:700}
+.card .go{position:absolute;right:24px;bottom:22px;width:50px;height:50px;border-radius:50%;background:var(--dark);color:#fff;display:grid;place-items:center;transition:transform .4s}
+.card:hover .go{transform:rotate(-45deg) scale(1.1)}
+
+/* BIG WORDS */
+.words{height:260vh;padding:0}
+.words .pin{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;overflow:hidden}
+.words .wd{font-family:Unbounded;font-weight:900;font-size:clamp(50px,9.5vw,200px);letter-spacing:-.05em;line-height:.95;will-change:transform}
+.words .wd:nth-child(2){color:#fff}
+.words .wd:nth-child(3){color:var(--ink);transition:color .9s}
+
+/* STEPS */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:40px;position:relative}
+.steps svg{position:absolute;left:0;top:30px;width:100%;height:120px;overflow:visible}
+.steps path{fill:none;stroke:var(--dark);stroke-width:3;stroke-dasharray:10 12;stroke-dashoffset:0}
+.steps .mask{stroke:var(--bg);stroke-width:8;stroke-dasharray:2000;stroke-dashoffset:0;transition:stroke-dashoffset 2.2s ease .3s,stroke .9s}
+.in .steps .mask{stroke-dashoffset:-2000}
+.step{position:relative;z-index:2;opacity:0;transform:scale(.6);transition:all .7s cubic-bezier(.3,1.6,.5,1)}
+.in .step{opacity:1;transform:none}
+.step:nth-child(3){transition-delay:.7s}.step:nth-child(4){transition-delay:1.4s}
+.step .n{width:84px;height:84px;border-radius:50%;background:#fff;display:grid;place-items:center;font-family:Unbounded;font-weight:900;font-size:30px;margin-bottom:24px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+.step h3{font-size:22px;margin-bottom:10px}.step p{opacity:.7;line-height:1.5}
+
+/* CONTACT */
+.contact{display:grid;grid-template-columns:1.1fr 1fr;gap:40px;align-items:start}
+.form{background:#fff;border-radius:36px;padding:40px}
+.form input,.form select{width:100%;border:0;background:var(--soft);padding:18px 22px;border-radius:18px;font:600 16px Manrope;margin-bottom:14px;transition:background .9s}
+.form .btn{width:100%;justify-content:center;padding:20px}
+.cinfo p{font-size:20px;font-weight:700;margin-bottom:14px}
+.cinfo span{display:block;font-size:13px;opacity:.6;letter-spacing:.15em;text-transform:uppercase;font-weight:800;margin-bottom:4px}
+footer{padding:60px 6vw 40px;overflow:hidden}
+footer .huge{font-family:Unbounded;font-weight:900;font-size:clamp(60px,13vw,240px);letter-spacing:-.05em;line-height:.85;color:#fff;white-space:nowrap}
+footer small{display:flex;justify-content:space-between;opacity:.6;font-weight:700;margin-top:30px}
+.toast{position:fixed;left:50%;bottom:30px;transform:translate(-50%,120px);background:var(--dark);color:#fff;padding:16px 28px;border-radius:99px;font-weight:800;z-index:99;transition:transform .5s cubic-bezier(.3,1.6,.5,1)}
+.toast.on{transform:translate(-50%,0)}
+@media(max-width:900px){.menu{display:none}.stats,.courses,.steps,.contact{grid-template-columns:1fr}.info{display:none}.kid{height:70vh}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="#"><i>☀</i><span class="sname">Солнышко</span></a>
+  <div class="menu"><a href="#courses">Курсы</a><a href="#stats">О школе</a><a href="#steps">Как записаться</a><a href="#contact">Контакты</a></div>
+  <a class="btn" href="#contact">Записаться</a>
+</nav>
+
+<header class="hero" id="hero">
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+  <div class="star" style="left:18vw;top:62vh">✦</div>
+  <div class="star" style="right:20vw;top:16vh;animation-delay:-2s">✦</div>
+  <div class="star" style="right:8vw;top:52vh;animation-delay:-3.5s;font-size:28px">✦</div>
+  <div class="tagline" id="tagline"></div>
+  <div class="school" id="school"></div>
+  <div class="big" id="big"></div>
+  <div class="floor"></div>
+  <img class="kid" id="kid" src="img/k1.png" alt="">
+  <div class="info">
+    <div class="age" id="age"></div>
+    <h3 id="ttl"></h3>
+    <p id="dsc"></p>
+    <a class="btn" href="#contact">Хочу на пробное →</a>
+  </div>
+  <div class="ctrl">
+    <div class="count"><b id="cur">01</b> / 05</div>
+    <button class="arr" id="prev" aria-label="Назад">←</button>
+    <button class="arr" id="next" aria-label="Вперёд">→</button>
+  </div>
+  <div class="dots" id="dots"></div>
+</header>
+
+<div class="marq"><div id="mq"></div></div>
+
+<section id="stats" class="rv">
+  <div class="kicker">О школе в цифрах</div>
+  <h2 class="split">Здесь дети учатся с радостью</h2>
+  <div class="stats">
+    <div class="stat"><div class="num" data-n="1200">0</div><p>учеников в этом году</p><div class="bar"><i data-w="88"></i></div></div>
+    <div class="stat"><div class="num" data-n="12">0</div><p>лет учим детей</p><div class="bar"><i data-w="60"></i></div></div>
+    <div class="stat"><div class="num" data-n="98" data-s="%">0</div><p>сдают ОГЭ и ЕГЭ на 4 и 5</p><div class="bar"><i data-w="98"></i></div></div>
+    <div class="stat"><div class="num" data-n="24">0</div><p>направления от 3 до 17 лет</p><div class="bar"><i data-w="75"></i></div></div>
+  </div>
+</section>
+
+<section id="courses" class="rv">
+  <div class="kicker">Направления</div>
+  <h2 class="split">Курсы на любой вкус и возраст</h2>
+  <div class="courses" id="cards"></div>
+</section>
+
+<section class="words" id="words">
+  <div class="pin"><div class="wd">Учись.</div><div class="wd">Путешествуй.</div><div class="wd">Вдохновляйся.</div></div>
+</section>
+
+<section id="steps" class="rv">
+  <div class="kicker">Три шага</div>
+  <h2 class="split">Как записаться на курс</h2>
+  <div class="steps">
+    <svg viewBox="0 0 1000 120" preserveAspectRatio="none"><path d="M40 30 C 250 140, 380 -60, 500 30 S 780 140, 960 30"/><path class="mask" d="M40 30 C 250 140, 380 -60, 500 30 S 780 140, 960 30"/></svg>
+    <div class="step"><div class="n">1</div><h3>Оставьте заявку</h3><p>Перезвоним за 15 минут и подберём курс по возрасту и интересам.</p></div>
+    <div class="step"><div class="n">2</div><h3>Пробное занятие</h3><p>Бесплатно. Ребёнок знакомится с педагогом и группой.</p></div>
+    <div class="step"><div class="n">3</div><h3>Учимся с радостью</h3><p>Группы до 8 человек, отчёт родителям после каждого месяца.</p></div>
+  </div>
+</section>
+
+<section id="contact" class="rv">
+  <div class="kicker">Контакты</div>
+  <h2 class="split">Приходите в гости</h2>
+  <div class="contact">
+    <form class="form" onsubmit="event.preventDefault();toast('Заявка отправлена! Скоро перезвоним 🌞');this.reset()">
+      <input placeholder="Имя родителя" required>
+      <input placeholder="Телефон" required>
+      <select id="sel"></select>
+      <button class="btn">Записаться на пробное</button>
+    </form>
+    <div class="cinfo">
+      <span>Телефон</span><p>+7 (999) 123-45-67</p>
+      <span>Адрес</span><p>ул. Солнечная, 12, 2 этаж</p>
+      <span>Часы работы</span><p>Пн–Сб, 9:00–20:00</p>
+      <span>Пишите</span><p>Telegram · WhatsApp · ВКонтакте</p>
+    </div>
+  </div>
+</section>
+
+<footer><div class="huge sname">Солнышко</div><small><span>© 2026 Детская школа</span><span>Учись · Путешествуй · Вдохновляйся</span></small></footer>
+<div class="toast" id="toast"></div>
+
+<script>
+const S=[
+ {w:'АНГЛИЙСКИЙ',t:'Английский язык',a:'5–14 лет',d:'Говорим с первого урока: игры, песни и живое общение.',bg:'#FFD9BF',ink:'#C2531B',soft:'#FFE9DA',ic:'🇬🇧',p:'от 4 900 ₽/мес'},
+ {w:'ОГЭ · ЕГЭ',t:'Подготовка к ОГЭ и ЕГЭ',a:'14–17 лет',d:'Разбираем каждое задание и пишем пробники каждый месяц.',bg:'#DCD3FF',ink:'#5B3FC4',soft:'#ECE6FF',ic:'🎓',p:'от 6 900 ₽/мес'},
+ {w:'РОБОТЫ',t:'Робототехника',a:'7–13 лет',d:'Собираем и программируем роботов — от LEGO до Arduino.',bg:'#C3EBDD',ink:'#1E7A5C',soft:'#DDF5EC',ic:'🤖',p:'от 5 500 ₽/мес'},
+ {w:'К ШКОЛЕ',t:'Подготовка к школе',a:'5–7 лет',d:'Чтение, счёт и письмо в игре. В первый класс — без страха.',bg:'#FFEFA8',ink:'#A97A00',soft:'#FFF6CF',ic:'✏️',p:'от 4 200 ₽/мес'},
+ {w:'ТВОРЧЕСТВО',t:'Рисование и творчество',a:'4–12 лет',d:'Акварель, лепка и комиксы. Каждый месяц — выставка работ.',bg:'#FFD3E2',ink:'#C23B6E',soft:'#FFE6EF',ic:'🎨',p:'от 3 900 ₽/мес'},
+];
+const $=s=>document.querySelector(s),R=document.documentElement;
+let i=0,busy=false;
+const big=$('#big'),kid=$('#kid');
+S.forEach((s,k)=>{new Image().src=`img/k${k+1}.png`;$('#dots').insertAdjacentHTML('beforeend','<i></i>')});
+const letters=t=>[...t].map(c=>`<span>${c===' '?'&nbsp;':c}</span>`).join('');
+function paint(s){R.style.setProperty('--bg',s.bg);R.style.setProperty('--ink',s.ink);R.style.setProperty('--soft',s.soft)}
+function fillInfo(s){$('#age').textContent=s.a;$('#ttl').textContent=s.t;$('#dsc').textContent=s.d;$('#cur').textContent='0'+(i+1);
+ document.querySelectorAll('#dots i').forEach((d,k)=>d.classList.toggle('on',k===i))}
+function wordIn(s,dir){big.className='big'+(s.w.length>9?' small':'');big.innerHTML=letters(s.w);
+ [...big.children].forEach((el,k)=>el.animate([{transform:`translateY(${dir>0?110:-110}%) rotate(${dir*12}deg)`,opacity:0},{transform:'none',opacity:1}],{duration:900,delay:120+k*45,easing:'cubic-bezier(.2,1.3,.4,1)',fill:'backwards'}))}
+function tagIn(){$('#tagline').innerHTML=['Учись','·','Путешествуй','·','Вдохновляйся'].map(w=>`<b>${w}</b>`).join(' ');
+ [...$('#tagline').children].forEach((el,k)=>el.animate([{transform:'translateY(20px)',opacity:0},{transform:'none',opacity:1}],{duration:700,delay:300+k*90,easing:'ease-out',fill:'backwards'}))}
+function infoIn(){document.querySelectorAll('.info>*').forEach((el,k)=>el.animate([{transform:'translateY(30px)',opacity:0},{transform:'none',opacity:1}],{duration:700,delay:200+k*70,easing:'cubic-bezier(.2,1,.3,1)',fill:'backwards'}))}
+function go(n){if(busy)return;busy=true; const d=(n>i&&!(i===0&&n===S.length-1))||(i===S.length-1&&n===0)?1:-1;i=(n+S.length)%S.length;const s=S[i];
+ [...big.children].forEach((el,k)=>el.animate([{transform:'none',opacity:1},{transform:`translateY(${d>0?-110:110}%) rotate(${-d*12}deg)`,opacity:0}],{duration:450,delay:k*20,easing:'cubic-bezier(.6,0,.8,.4)',fill:'forwards'}));
+ const out=kid.animate([{transform:'translateX(-50%)',opacity:1},{transform:`translateX(calc(-50% - ${d*45}vw)) rotate(${-d*14}deg) scale(.85)`,opacity:0}],{duration:520,easing:'cubic-bezier(.6,0,.9,.5)',fill:'forwards'});out.onfinish=()=>{
+  kid.src=`img/k${i+1}.png`;paint(s);fillInfo(s);wordIn(s,d);infoIn();
+  kid.animate([{transform:`translateX(calc(-50% + ${d*45}vw)) rotate(${d*14}deg) scale(.85)`,opacity:0},{transform:'translateX(-50%) rotate(-3deg) scale(1.03)',opacity:1,offset:.7},{transform:'translateX(-50%)',opacity:1}],{duration:950,easing:'cubic-bezier(.2,1,.3,1)'}).onfinish=()=>busy=false;out.cancel();
+ }}
+$('#next').onclick=()=>go(i+1);$('#prev').onclick=()=>go(i-1);
+document.querySelectorAll('#dots i').forEach((d,k)=>d.onclick=()=>k!==i&&go(k));
+
+// init
+paint(S[0]);fillInfo(S[0]);wordIn(S[0],1);tagIn();infoIn();
+kid.animate([{transform:'translateX(-50%) translateY(40vh) scale(.8)'},{transform:'translateX(-50%)'}],{duration:1200,easing:'cubic-bezier(.2,1.2,.3,1)'});
+
+// marquee
+const mw=['Учись','Путешествуй','Вдохновляйся','Английский','ОГЭ и ЕГЭ','Роботы','Творчество'];
+$('#mq').innerHTML=[...mw,...mw].map((w,k)=>(k%2?`<em>${w}</em>`:w)+' ✦').join(' ');
+
+// cards
+$('#cards').innerHTML=S.map((s,k)=>`<div class="card" style="transition-delay:${k*.09}s" data-k="${k}"><div class="ic" style="background:${s.bg}">${s.ic}</div><h3>${s.t}</h3><p>${s.a}. ${s.d}</p><div class="pr">${s.p}</div><div class="go">→</div></div>`).join('')+
+ `<div class="card" style="transition-delay:.45s;background:var(--dark);color:#fff"><div class="ic" style="background:#fff">🎁</div><h3>Пробное — бесплатно</h3><p>Первое занятие на любом курсе в подарок. Приходите знакомиться!</p><a class="go" href="#contact" style="background:#fff;color:#000">→</a></div>`;
+document.querySelectorAll('.card[data-k]').forEach(c=>c.onclick=()=>{scrollTo({top:0});setTimeout(()=>+c.dataset.k!==i&&go(+c.dataset.k),500)});
+$('#sel').innerHTML=S.map(s=>`<option>${s.t}</option>`).join('');
+
+// split headings
+document.querySelectorAll('.split').forEach(h=>h.innerHTML=h.textContent.split(' ').map((w,k)=>`<span class="w"><span style="transition-delay:${k*.07}s">${w}</span></span>`).join(' '));
+
+// odometer
+document.querySelectorAll('.num').forEach(n=>{const v=n.dataset.n,s=n.dataset.s||'+';n.innerHTML=[...v].map(c=>`<div class="col">${Array.from({length:20},(_,k)=>`<span>${k%10}</span>`).join('')}</div>`).join('')+`<span>${s}</span>`;n.dataset.v=v});
+function roll(sec){sec.querySelectorAll('.num').forEach(n=>[...n.querySelectorAll('.col')].forEach((c,k)=>{const m=document.createElement('span');m.textContent=n.dataset.v[k];m.style.position='absolute';m.style.visibility='hidden';n.appendChild(m);c.style.width=m.offsetWidth+'px';c.style.transitionProperty='transform';m.remove()}));sec.querySelectorAll('.num').forEach(n=>[...n.querySelectorAll('.col')].forEach((c,k)=>{c.style.transitionDelay=k*.12+'s';c.style.transform=`translateY(-${10+ +n.dataset.v[k]}em)`}));
+ sec.querySelectorAll('.bar i').forEach(b=>b.style.width=b.dataset.w+'%')}
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');if(e.target.id==='stats')roll(e.target);io.unobserve(e.target)}}),{threshold:.25});
+document.querySelectorAll('.rv').forEach(s=>io.observe(s));
+
+// scroll / mouse motion
+const wds=document.querySelectorAll('.words .wd');
+addEventListener('scroll',()=>{const y=scrollY,h=innerHeight;
+ kid.style.translate=`0 ${y*.25}px`;big.style.translate=`0 ${y*.45}px`;
+ const w=$('#words'),r=w.getBoundingClientRect(),p=Math.min(1,Math.max(0,-r.top/(r.height-h)));
+ wds.forEach((el,k)=>{const q=Math.min(1,Math.max(0,p*3-k*.8));el.style.transform=`translateX(${(1-q)*(k%2?-60:60)}vw) scale(${.6+q*.4}) rotate(${(1-q)*(k%2?6:-6)}deg)`;el.style.opacity=.15+q*.85})},{passive:true});
+dispatchEvent(new Event('scroll'));
+addEventListener('mousemove',e=>{const x=e.clientX/innerWidth-.5,y=e.clientY/innerHeight-.5;
+ document.querySelectorAll('.blob').forEach((b,k)=>b.style.transform=`translate(${x*(k+1)*30}px,${y*(k+1)*30}px)`)});
+
+// keys
+function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('on');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('on'),2600)}
+function setName(t){t=(t||'').trim().replace(/\s+/g,' ').slice(0,40);if(!t)return;
+ document.querySelectorAll('.sname').forEach(e=>e.textContent=t);document.title=t;
+ document.querySelectorAll('.sname').forEach(e=>e.animate([{transform:'scale(.6)',opacity:0},{transform:'scale(1.1)',opacity:1,offset:.7},{transform:'none'}],{duration:700,easing:'cubic-bezier(.2,1.2,.4,1)'}))}
+addEventListener('keydown',async e=>{if(e.target.matches('input,select'))return;
+ if(e.code==='ArrowRight')go(i+1);else if(e.code==='ArrowLeft')go(i-1);
+ else if(e.code==='KeyF'){document.fullscreenElement?document.exitFullscreen():R.requestFullscreen()}
+ else if(e.code==='KeyG'){let t='';try{t=await navigator.clipboard.readText()}catch(_){t=prompt('Название школы:')||''}setName(t)}});
+</script>
+</body>
+</html>
