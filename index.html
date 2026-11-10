@@ -355,7 +355,6 @@ const CATS = {
   sites: { label:'Сайты', kind:'landscape', hint:'Листайте сайт прямо здесь', items:[
     { title:'Brightway School', kind:'Лендинг · онлайн-школа английского', sub:'Объёмные буквы, бегущая строка и курсы с ценами', src:'works/sites/brightway/index.html', poster:'brightway', demo:'works/video/brightway', c1:'#2f5bff', c2:'#ffd23f' },
     { title:'Школа «Солнышко»', kind:'Лендинг · детская школа', sub:'Курсы, цифры и запись на пробное занятие', src:'works/sites/solnyshko/index.html', poster:'solnyshko', demo:'works/video/solnyshko', c1:'#5ad0e8', c2:'#ffb199' },
-    { title:'Автосервис', kind:'Лендинг · 3D-модель', sub:'Услуги, цены и 3D-машина, которую можно покрутить', src:'works/sites/autoservice/index.html', poster:'autoservice', c1:'#2a2f3a', c2:'#ff6a2b' },
     { title:'ВИРАЖ', kind:'Интернет-магазин', sub:'Магазин велосипедов: каталог и анимация при прокрутке', src:'works/sites/viraj/index.html', poster:'viraj', c1:'#ff5b1f', c2:'#2a6fe8' },
     { title:'ШАГ', kind:'Интернет-магазин', sub:'Обувь и одежда: витрина, подборки, версия для телефона', src:'works/sites/shag/index.html', poster:'shag', c1:'#4f86c6', c2:'#c58a5a' },
     { title:'NOCTIS — Земля после заката', kind:'Интерактивная презентация', sub:'Данные о населении планеты в форме motion-сайта', src:'works/sites/noctis.html', poster:'noctis', c1:'#2a5c9e', c2:'#a8e6ef' },
@@ -370,12 +369,12 @@ const CATS = {
     { title:'Motion design be like', kind:'Reels для соцсетей', sub:'Короткий ролик с юмором о профессии', src:'works/motion/reel2.mp4', preview:'reel2', video:true, c1:'#8a3dff', c2:'#ff3d8a' },
   ]},
   games: { label:'Игры', kind:'landscape', hint:'Кликните и играйте', items:[
-    { title:'APEX GP', kind:'Гонка · онлайн с друзьями', sub:'Формула-1 в браузере: 25 трасс, шины, погода, игра по ссылке', src:'works/games/apex-gp/index.html', poster:'apex-gp', c1:'#e10600', c2:'#15151e' },
     { title:'Dusk Runner', kind:'Раннер', sub:'Бесконечный забег на закате', src:'works/games/dusk-runner.html', poster:'dusk-runner', c1:'#6a3cc9', c2:'#ff7a4a' },
     { title:'Hyper Drive 3D', kind:'3D-гонка', sub:'Скоростной полёт по неоновой трассе', src:'works/games/hyper-drive.html', poster:'hyper-drive', c1:'#00b3ff', c2:'#ff2fb3' },
     { title:'Neon Snake', kind:'Аркада', sub:'Классическая змейка в неоновом стиле', src:'works/games/neon-snake.html', poster:'neon-snake', c1:'#2bff9a', c2:'#5a2bff' },
     { title:'Candy Break', kind:'Аркада', sub:'Конфетный арканоид прямо в браузере', src:'works/games/candy-break.html', poster:'candy-break', c1:'#ff8cc6', c2:'#8a5cff' },
     { title:'Ремейки игр', kind:'Под заказ', sub:'Повторим механику любой игры на своей графике', src:'works/games/remakes.html', poster:'remakes', hint:'', c1:'#5ee7ff', c2:'#ff4d6d' },
+    { title:'APEX GP', kind:'Гонка · онлайн с друзьями', sub:'Формула-1 в браузере: 25 трасс, шины, погода, игра по ссылке', src:'works/games/apex-gp/index.html', poster:'apex-gp', c1:'#e10600', c2:'#15151e' },
   ]},
 };
 
@@ -828,16 +827,24 @@ function mountSite(it){
   fullHolder.appendChild(f);
   whenReady(f, () => { f.classList.add('ready'); try { f.focus(); f.contentWindow.focus(); } catch(e){} });
 }
-/* Видео-запись «как листается на ноутбуке»: грузится только по кнопке, в карусели её нет */
-$('#fullDemo').addEventListener('click', () => {
+/* Видео-запись «как листается на ноутбуке»: грузится только по кнопке, в карусели её нет.
+   Адрес меняется на #sites/1/video — по такой ссылке видео открывается сразу. */
+const baseHash = () => '#' + state.cat + (state.cur ? '/' + (state.cur + 1) : '');
+function showDemo(){
   const b = $('#fullDemo'), it = state.cards[state.cur]._item;
-  if (b.dataset.mode === 'site'){
-    fullHolder.innerHTML = ''; fullHolder.style.backgroundImage = '';
-    const v = document.createElement('video');
-    Object.assign(v, { src:it.demo + '.mp4', poster:it.demo + '.webp', controls:true, autoplay:true, loop:true, muted:true, playsInline:true });
-    fullHolder.appendChild(v); b.dataset.mode = 'video'; b.lastElementChild.textContent = 'Сайт';
-  } else { mountSite(it); b.dataset.mode = 'site'; b.lastElementChild.textContent = 'Видео'; }
-});
+  if (!it.demo || b.dataset.mode === 'video') return;
+  fullHolder.innerHTML = ''; fullHolder.style.backgroundImage = '';
+  const v = document.createElement('video');
+  Object.assign(v, { src:it.demo + '.mp4', poster:it.demo + '.webp', controls:true, autoplay:true, loop:true, muted:true, playsInline:true });
+  fullHolder.appendChild(v); b.dataset.mode = 'video'; b.lastElementChild.textContent = 'Сайт';
+  history.replaceState(null, '', baseHash().replace(/^#(\w+)$/, '#$1/1') + '/video');
+}
+function showSiteAgain(){
+  const b = $('#fullDemo'), it = state.cards[state.cur]._item;
+  mountSite(it); b.dataset.mode = 'site'; b.lastElementChild.textContent = 'Видео';
+  history.replaceState(null, '', baseHash());
+}
+$('#fullDemo').addEventListener('click', () => { $('#fullDemo').dataset.mode === 'site' ? showDemo() : showSiteAgain(); });
 function openFull(){
   const c = state.cards[state.cur], it = c._item;
   const r = c.getBoundingClientRect();
@@ -866,6 +873,7 @@ function openFull(){
 function closeFull(){
   if (!state.full) return;
   state.full = false;
+  history.replaceState(null, '', baseHash());
   const ex = document.exitFullscreen || document.webkitExitFullscreen;
   if ((document.fullscreenElement || document.webkitFullscreenElement) && ex) ex.call(document).catch?.(() => {});
   const c = state.cards[state.cur], r = c.getBoundingClientRect();
@@ -1277,11 +1285,17 @@ stage.addEventListener('click', e => {
 });
 
 function fromHash(){
-  const [c, n] = location.hash.slice(1).split('/');
-  return { cat: CATS[c] ? c : 'sites', idx: Math.max(0, (parseInt(n, 10) || 1) - 1) };
+  const [c, n, v] = location.hash.slice(1).split('/');
+  return { cat: CATS[c] ? c : 'sites', idx: Math.max(0, (parseInt(n, 10) || 1) - 1), video: v === 'video' };
 }
-addEventListener('popstate', () => { const h = fromHash(); setCategory(h.cat, h.idx); });
-addEventListener('hashchange', () => { const h = fromHash(); setCategory(h.cat, h.idx); });
+function applyHash(){
+  const h = fromHash();
+  if (state.full && !h.video) closeFull();
+  setCategory(h.cat, h.idx);
+  if (h.video && CATS[h.cat].items[h.idx]?.demo) setTimeout(() => { if (!state.full) openFull(); showDemo(); }, state.cards.length ? 350 : 0);
+}
+addEventListener('popstate', applyHash);
+addEventListener('hashchange', applyHash);
 
 function refit(){
   state.g = geom();
@@ -1298,6 +1312,7 @@ setTimeout(() => { if (!state.cards.some(c => c._anim)) refit(); }, 1800);
 /* старт */
 const h0 = fromHash();
 setCategory(h0.cat, h0.idx, true);
+if (h0.video && CATS[h0.cat].items[h0.idx]?.demo) setTimeout(() => { openFull(); showDemo(); }, 500);
 requestAnimationFrame(tick);
 </script>
 </body>
